@@ -1,8 +1,8 @@
-# 步道乐跑助手（MuMu） · LePao Runner Community
+# 步道乐跑助手（MuMu） · Budao LePao Assistant
 
 面向步道乐跑（Budao LePao）的 Windows + MuMu 模拟器定位与步数测试工具，提供自动联动、跑道轨迹模拟、中文安装教程和免 Python 的 Windows 下载包。基于 [EdmundMad0309/budao-lepao-runner](https://github.com/EdmundMad0309/budao-lepao-runner) 修改，按 MIT 许可证开源。
 
-**下载即用版本：** [最新版发行包](https://github.com/a28638296-hub/lepao-runner-community/releases/latest) → 展开 **Assets** → 下载 `LePaoRunner-v2.1.0-windows-x64.zip`。普通用户不需要安装 Python。GitHub 的绿色 **Code → Download ZIP** 下载的是源码，不是可执行程序。
+**下载即用版本：** [最新版发行包](https://github.com/a28638296-hub/budao-lepao-assistant/releases/latest) → 展开 **Assets** → 下载 `LePaoRunner-v2.1.0-windows-x64.zip`。普通用户不需要安装 Python。GitHub 的绿色 **Code → Download ZIP** 下载的是源码，不是可执行程序。
 
 > 生成的是模拟运动数据，并不代表真实跑步。用于获得授权的开发、演示与定位测试；请勿提交虚假考勤或成绩。安装包不包含第三方 App，不代替本人登录，也不保证记录被服务端认定有效。
 
@@ -75,8 +75,8 @@
 需要含 Tkinter 的 Python 3.13～3.15；本次构建环境为 Python 3.15.2 + PyInstaller 6.22.3。运行程序只使用标准库。
 
 ```powershell
-git clone https://github.com/a28638296-hub/lepao-runner-community.git
-cd lepao-runner-community
+git clone https://github.com/a28638296-hub/budao-lepao-assistant.git
+cd budao-lepao-assistant
 python launch.py
 ```
 
