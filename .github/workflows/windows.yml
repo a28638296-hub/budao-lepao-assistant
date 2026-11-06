@@ -1,0 +1,32 @@
+name: Windows checks and build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.15'
+      - name: Offline tests
+        run: python -m unittest discover -s tests -v
+      - name: Build
+        shell: pwsh
+        run: ./build_exe.ps1
+      - name: Packaged startup check
+        shell: pwsh
+        run: |
+          $p = Start-Process ./dist/LePaoRunner.exe -ArgumentList '--smoke-test smoke.json' -WindowStyle Hidden -PassThru
+          if (-not $p.WaitForExit(60000)) { $p.Kill(); throw 'Startup check timed out' }
+          if (-not (Test-Path smoke.json)) { throw 'Startup check produced no result' }
+          if (-not (Get-Content smoke.json | ConvertFrom-Json).ok) { throw 'Startup check failed' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Windows-executable
+          path: dist/LePaoRunner.exe
