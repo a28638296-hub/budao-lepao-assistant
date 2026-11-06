@@ -2,7 +2,7 @@
 
 面向步道乐跑的非官方 Windows + MuMu 模拟器定位与步数测试工具，提供自动联动、跑道轨迹模拟、中文安装教程和免 Python 的 Windows 下载包。基于 [EdmundMad0309/budao-lepao-runner](https://github.com/EdmundMad0309/budao-lepao-runner) 修改，按 MIT 许可证开源。
 
-**下载即用版本：** [最新版发行包](https://github.com/a28638296-hub/budao-lepao-assistant/releases/latest) → 展开 **Assets** → 下载 `LePaoRunner-v2.1.0-windows-x64.zip`。普通用户不需要安装 Python。GitHub 的绿色 **Code → Download ZIP** 下载的是源码，不是可执行程序。
+**下载即用版本：** [最新版发行包](https://github.com/a28638296-hub/budao-lepao-assistant/releases/latest) → 展开 **Assets** → 下载 `LePaoRunner-v2.2.0-windows-x64.zip`。普通用户不需要安装 Python。GitHub 的绿色 **Code → Download ZIP** 下载的是源码，不是可执行程序。
 
 > 生成的是模拟运动数据，并不代表真实跑步。用于获得授权的开发、演示与定位测试；请勿提交虚假考勤或成绩。安装包不包含第三方 App，不代替本人登录，也不保证记录被服务端认定有效。
 
@@ -12,7 +12,7 @@
 
 1. 使用 Windows 10/11 64 位电脑。
 2. 从 [MuMu 官网](https://mumu.163.com/) 安装模拟器，确认开启 CPU 虚拟化。
-3. 在 MuMu 多开器中创建并启动 **Android 12** 实例。已测试的配置是 Android 12、DirectX 渲染、ROOT 关闭。
+3. 在 MuMu 多开器中创建并启动 **Android 12 或更高版本**的实例。助手按接口能力连接，不设置 Android 版本上限；本地已检查 Android 12 与 15 的设备接口。完整适用条件与验证范围见下方兼容性表。
 4. 从官方渠道安装步道乐跑，使用本人账号完成登录。本版自动页面识别适配 **4.2.6**；其他版本的按钮和页面结构可能不同。本仓库不分发 APK，也不提供第三方破解包。
 5. 在 Android 设置中开启“位置”，授予 App 精确位置权限；需要后台记录时允许相应后台权限并取消电池限制。进入乐跑首页，先结束此前未完成的记录。
 
@@ -20,7 +20,7 @@
 
 1. 打开上面的最新版发行页，下载 Windows ZIP 和 `SHA256SUMS.txt`。
 2. 将 ZIP **完整解压**到可写目录，如 `D:\Apps\LePaoRunner`；不要直接在压缩包里双击程序。
-3. 可在 PowerShell 执行 `Get-FileHash .\LePaoRunner-v2.1.0-windows-x64.zip -Algorithm SHA256`，与发行页校验文件核对。
+3. 可在 PowerShell 执行 `Get-FileHash .\LePaoRunner-v2.2.0-windows-x64.zip -Algorithm SHA256`，与发行页校验文件核对。
 4. 双击 `LePaoRunner.exe`。EXE 未购买代码签名证书，Windows 可能提示未知发布者；先核对下载来源和校验值，不要关闭杀毒软件。
 
 ### 3. 首次设置模拟器
@@ -98,6 +98,16 @@ python -m venv .venv
 
 ## 已知限制与验证范围
 
+- **系统适配目标：MuMu 的 Android 12 及以上实例。** 工具本体仍是 Windows 程序，不是安装到任意安卓手机上的 APK。
+
+| 系统 | 当前验证范围 |
+|---|---|
+| Android 12（本地 API 32） | ADB、位置开关与 GPS 刷新、App 首页识别；此前跑步/暂停控件结构回归 |
+| Android 15（本地 API 35） | ADB 自动连接、位置开关与 GPS 刷新、App 启动、界面 XML 读取；实例未登录，未验证真实记录 |
+| Android 13 / 14 / 16 及更新版本 | 没有版本白名单限制，使用相同能力检测；本地缺少对应镜像，未实机验证 |
+
+- v2.2.0 修复了切换实例后 ADB 未连接、ADB 路径写死系统版本，以及部分 Android 15 镜像界面 XML 已写出但读取工具退出报错的问题；兼容完整 Activity 类名与不同生命周期字段格式。
+- 点击“自检”可读取实际 Android/API、CPU 架构、App 版本和位置开关。自检不会移动坐标或创建运动记录。能读到设备信息不等于 App 的登录、记录或服务端校验一定兼容。
 - 验证包含方向几何、环带/连线边界、随机配速、分圈间距、GPS 检查、自动联动状态机，以及从 4.2.6 现场采集的按钮结构回归。
 - 页面检测修复已由现场结构确认；并未完成所有电脑、App 版本上的真实记录端到端验证，不承诺通用兼容或成绩有效。
 - 地图线条有宽度，GPS 与坐标转换有误差；生成点分开，不代表地图显示绝不重叠。圈数越多，有限宽度内每圈间距越小。

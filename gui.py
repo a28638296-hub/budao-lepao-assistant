@@ -135,7 +135,7 @@ class App:
     # ---------- UI ----------
     def _build(self):
         r = self.root
-        r.title("LePao Runner Community  v2.1.0")
+        r.title("步道乐跑 · 社区版 v2.2.0")
         r.geometry("720x920")
         r.minsize(620, 800)
 
@@ -496,6 +496,18 @@ class App:
         self._log("自检：预计步频 %d 步/分" % cad)
 
         self._log("自检为只读检查，不改变当前位置，也不发送步数")
+        def device_check():
+            try:
+                info = self.get_client().device_info()
+                self._log("设备：Android %s / API %s | 架构 %s | App %s | 位置开关 %s" %
+                          (info["android"], info["sdk"], info["abi"], info["app_version"] or "未安装",
+                           "已开启" if info["location_enabled"] else "未开启"))
+                if not info["android_12_or_newer"]:
+                    self._log("此项目面向 Android 12 及以上；当前系统低于该范围")
+                self._log("设备接口可读；App 启动和跑步页面兼容性仍需单独确认")
+            except Exception as exc:
+                self._log("设备自检失败：%s" % exc)
+        threading.Thread(target=device_check, daemon=True).start()
 
     def on_prepare(self, automatic=False):
         if self.preparing or (self.worker and self.worker.is_alive()):

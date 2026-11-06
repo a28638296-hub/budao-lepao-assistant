@@ -6,6 +6,22 @@ import xml.etree.ElementTree as ET
 PACKAGE = "com.lptiyu.tanke"
 
 
+def resumed_activity(dump):
+    """Accept short/full component names and lifecycle formatting variations."""
+    found = (None, "")
+    for block in re.split(r"(?m)^\s*ACTIVITY\s+", dump)[1:]:
+        match = re.match(r"([^/\s]+)/(\S+)", block)
+        resumed = re.search(r"\bmResumed\s*=\s*(true|false)", block)
+        stopped = re.search(r"\bmStopped\s*=\s*(true|false)", block)
+        if not match or not resumed or resumed[1] != "true" or not stopped or stopped[1] != "false":
+            continue
+        component = match[2]
+        if component.startswith(PACKAGE + "."):
+            component = component[len(PACKAGE):]
+        found = (component, block) if match[1] == PACKAGE else (None, "")
+    return found
+
+
 def classify_run_views(block):
     """4.2.6 TextProgressBar draws its text, so accessibility text is empty.
 
@@ -23,7 +39,7 @@ def classify_run_views(block):
             ancestors.pop()
         visible = visible and all(v for _, v in ancestors)
         ancestors.append((depth, visible))
-        rid = re.search(r"app:id/(\w+)", line)
+        rid = re.search(r"(?:app|com\.lptiyu\.tanke):id/(\w+)", line)
         if rid:
             states[rid[1]] = (match[2], visible)
             if "countdown" in rid[1].lower().replace("_", "") and visible:
@@ -68,13 +84,7 @@ class ScreenObserver:
         # Never save screen contents or inspect login screens.
         with self.lock:
             dump = self.client.adb_shell("dumpsys", "activity", "top")
-            activity = None
-            active_block = ""
-            for block in re.split(r"(?m)^\s*ACTIVITY ", dump)[1:]:
-                match = re.match(r"com\.lptiyu\.tanke/(\S+)", block)
-                if match and re.search(r"mResumed=true\s+mStopped=false", block):
-                    activity = match[1]
-                    active_block = block
+            activity, active_block = resumed_activity(dump)
             if activity not in (".activities.main.MainActivity", ".activities.school_run.MapRunActivity"):
                 return "unknown"
             if activity == ".activities.school_run.MapRunActivity":

@@ -23,6 +23,7 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+from pathlib import Path
 
 from .geo import wgs84_to_bd09
 
@@ -94,9 +95,7 @@ def discover_mumu():
     if manager:
         info["root"] = os.path.dirname(os.path.dirname(manager))
 
-    adb = _find_first(os.path.join("nx_main", "adb.exe"),
-                      os.path.join("nx_device", "15.0", "shell", "adb.exe"),
-                      os.path.join("nx_device", "12.0", "shell", "adb.exe"), "adb.exe")
+    adb = find_adb(_candidate_roots())
     if adb:
         info["adb"] = adb
 
@@ -136,6 +135,18 @@ def discover_mumu():
         except Exception:
             pass
     return info
+
+
+def find_adb(roots):
+    """MuMu's device directory is versioned; do not enumerate Android releases."""
+    for root in roots:
+        root = Path(root)
+        candidates = [root / "nx_main/adb.exe", root / "adb.exe"]
+        candidates.extend(sorted(root.glob("nx_device/*/shell/adb.exe"), reverse=True))
+        for candidate in candidates:
+            if candidate.is_file():
+                return str(candidate)
+    return None
 
 
 class MuMuGateway:
@@ -318,40 +329,93 @@ class MuMuGateway:
         except Exception:
             return False
 
+    def _resolve_adb_serial(self):
+        data = json.loads(self.manager("info", "-v", str(self.vm_index)))
+        if isinstance(data, list):
+            data = next(i for i in data if str(i.get("index")) == str(self.vm_index))
+        elif "index" not in data:
+            data = data.get(str(self.vm_index), {})
+        if not data.get("adb_port"):
+            raise RuntimeError("所选模拟器尚未启动或未提供 ADB 端口，请启动该实例")
+        self._adb_serial = "%s:%s" % (data.get("adb_host_ip", "127.0.0.1"), data["adb_port"])
+
+    def _adb(self, *args):
+        return subprocess.run([self.adb_path, *args], capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", timeout=15,
+                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+
     def adb_shell(self, *args):
-        """Use the selected instance's actual ADB endpoint directly."""
+        """Resolve/reconnect only the selected instance; never restart the ADB server."""
         if not self.adb_path or not os.path.exists(self.adb_path):
             raise RuntimeError("未找到 adb")
         if not getattr(self, "_adb_serial", None):
-            data = json.loads(self.manager("info", "-v", str(self.vm_index)))
-            if isinstance(data, list):
-                data = next(i for i in data if str(i.get("index")) == str(self.vm_index))
-            self._adb_serial = "%s:%s" % (data.get("adb_host_ip", "127.0.0.1"), data["adb_port"])
-        out = subprocess.run([self.adb_path, "-s", self._adb_serial, "shell", *args],
-                             capture_output=True, text=True, encoding="utf-8", errors="replace",
-                             timeout=15, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            self._resolve_adb_serial()
+        out = self._adb("-s", self._adb_serial, "shell", *args)
+        error = (out.stderr or out.stdout).strip()
+        if out.returncode and re.search(r"device .*not found|device offline|device not found|closed|cannot connect", error, re.I):
+            self._resolve_adb_serial()
+            self._adb("connect", self._adb_serial)
+            out = self._adb("-s", self._adb_serial, "shell", *args)
         if out.returncode:
+            # Some Android 15 images crash uiautomator's shutdown thread *after*
+            # it successfully writes XML. Accept only this exact dump completion;
+            # the caller still reads/parses that XML. Other failures remain errors.
+            if (len(args) >= 3 and args[:2] == ("uiautomator", "dump") and
+                    ("UI hierchary dumped to: " + args[-1]) in out.stdout):
+                return out.stdout.strip()
             raise RuntimeError("模拟器 ADB 连接失败：%s" % (out.stderr or out.stdout).strip())
         return out.stdout.strip()
 
+    def location_enabled(self):
+        try:
+            answer = self.adb_shell("cmd", "location", "is-location-enabled").lower()
+        except RuntimeError:
+            answer = ""
+        if answer in ("true", "false"):
+            return answer == "true"
+        # Some system images omit the shell subcommand but retain the secure setting.
+        answer = self.adb_shell("settings", "get", "secure", "location_mode").strip()
+        if answer in ("0", "1", "2", "3"):
+            return answer != "0"
+        raise RuntimeError("无法读取位置开关状态，请检查所选系统镜像的定位服务")
+
+    def set_location_enabled(self, enabled):
+        try:
+            self.adb_shell("cmd", "location", "set-location-enabled", str(enabled).lower())
+            changed = self.location_enabled() == enabled
+        except RuntimeError:
+            changed = False
+        if not changed:
+            self.adb_shell("settings", "put", "secure", "location_mode", "3" if enabled else "0")
+        if self.location_enabled() != enabled:
+            raise RuntimeError("GPS 开关未成功切换，请检查模拟器的位置设置")
+
     def ensure_gps_enabled(self):
-        self.adb_shell("cmd", "location", "set-location-enabled", "true")
-        if self.adb_shell("cmd", "location", "is-location-enabled").lower() != "true":
-            raise RuntimeError("GPS 开关未成功开启，请检查模拟器的位置设置")
+        self.set_location_enabled(True)
 
     def gps_status(self):
-        enabled = self.adb_shell("cmd", "location", "is-location-enabled").lower() == "true"
+        enabled = self.location_enabled()
         dump = self.adb_shell("dumpsys", "location")
-        fix = re.search(r"last location=Location\[gps\s+([-\d.]+),([-\d.]+)[^\n]*", dump)
+        fix = re.search(r"last\s*location\s*[:=]\s*Location\[gps\s+(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)[^\n]*", dump, re.I)
         sat = re.search(r"satellites=(\d+)", fix.group(0)) if fix else None
         return {"enabled": enabled,
                 "location": (float(fix[1]), float(fix[2])) if fix else None,
                 "satellites": int(sat[1]) if sat else None}
 
+    def device_info(self):
+        release = self.adb_shell("getprop", "ro.build.version.release")
+        sdk = int(self.adb_shell("getprop", "ro.build.version.sdk"))
+        abi = self.adb_shell("getprop", "ro.product.cpu.abilist")
+        package = self.adb_shell("dumpsys", "package", "com.lptiyu.tanke")
+        version = re.search(r"versionName=([^\s]+)", package)
+        return {"android": release, "sdk": sdk, "android_12_or_newer": sdk >= 31,
+                "abi": abi, "app_version": version[1] if version else None,
+                "location_enabled": self.location_enabled()}
+
     def kick_location(self, delay_s=0.9):
         """关/开位置总开关，强制 GNSS 引擎重取当前虚拟位置。"""
         try:
-            self.adb_shell("cmd", "location", "set-location-enabled", "false")
+            self.set_location_enabled(False)
             time.sleep(delay_s)
         finally:
             self.ensure_gps_enabled()

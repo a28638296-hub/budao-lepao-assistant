@@ -41,7 +41,8 @@ def configure():
                                  creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             data = json.loads(out.stdout)
             items = data if isinstance(data, list) else ([data] if "index" in data else data.values())
-            messagebox.showinfo("实例编号", "\n".join("%s：%s" % (i.get("index"), i.get("name")) for i in items))
+            messagebox.showinfo("实例编号", "\n".join("%s：%s · Android %s" %
+                               (i.get("index"), i.get("name"), i.get("android_version", "未知")) for i in items))
         except Exception as exc:
             messagebox.showerror("查询失败", str(exc))
     def save():

@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-06",
+  "devices": [
+    {
+      "android": "15",
+      "sdk": 35,
+      "app_version": "4.2.6",
+      "adb": true,
+      "active_activity": ".activities.main.MainActivity",
+      "position_injection_tested": false,
+      "recording_tested": false,
+      "gps_refresh_readback": true,
+      "xml_readable": true,
+      "login_required": true,
+      "observer_state": "unknown"
+    },
+    {
+      "android": "12",
+      "sdk": 32,
+      "app_version": "4.2.6",
+      "adb": true,
+      "active_activity": ".activities.main.MainActivity",
+      "position_injection_tested": false,
+      "recording_tested": false,
+      "gps_refresh_readback": true,
+      "xml_readable": true,
+      "login_required": false,
+      "observer_state": "idle"
+    }
+  ],
+  "offline_tests": 41,
+  "unavailable_android_versions": [
+    13,
+    14,
+    16
+  ],
+  "note": "Device transport, GPS switch and UI checks only; no new activity recording or location movement was generated."
+}
