@@ -10,6 +10,7 @@ from tkinter import ttk, filedialog, messagebox
 
 import gui
 from lepao.mumu import discover_mumu, MuMuLocationClient
+from lepao.autolink import resumed_activity
 
 SETTINGS = Path(gui._appdata_dir()) / "launcher.json"
 
@@ -108,8 +109,10 @@ def open_target(settings):
         try:
             if command("info", "-v", index).get("is_android_started"):
                 if client.adb_shell("getprop", "sys.boot_completed").strip() == "1":
-                    if "com.lptiyu.tanke/" not in client.adb_shell("dumpsys", "activity", "top"):
-                        client.adb_shell("am", "start", "-n", "com.lptiyu.tanke/.activities.splash.SplashActivity")
+                    if resumed_activity(client.adb_shell("dumpsys", "activity", "top"))[0] is None:
+                        result = client.adb_shell("am", "start", "-W", "-n", "com.lptiyu.tanke/.activities.splash.SplashActivity")
+                        if "Error" in result or "Status: ok" not in result:
+                            raise RuntimeError("乐跑未成功打开：" + result)
                     return
         except (RuntimeError, subprocess.TimeoutExpired) as exc:
             last_error = str(exc)

@@ -137,8 +137,20 @@ class App:
     def _build(self):
         r = self.root
         r.title("步道乐跑 · 社区版 v2.2.1")
-        r.geometry("720x920")
-        r.minsize(620, 800)
+        width = min(760, r.winfo_screenwidth() - 60)
+        height = min(900, r.winfo_screenheight() - 100)
+        r.geometry("%dx%d+20+20" % (width, height))
+        r.minsize(min(620, width), min(480, height))
+        canvas = tk.Canvas(r, highlightthickness=0)
+        scroll = ttk.Scrollbar(r, orient="vertical", command=canvas.yview)
+        scroll.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+        canvas.configure(yscrollcommand=scroll.set)
+        content = ttk.Frame(canvas)
+        window = canvas.create_window((0, 0), window=content, anchor="nw")
+        content.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda e: canvas.itemconfigure(window, width=e.width))
+        r = content
 
         pad = dict(padx=10, pady=4)
         head = ttk.Label(r, text="操场环形路线：北端 → 西北 → 西南 → 南端 → 东南 → 东北",
@@ -249,9 +261,9 @@ class App:
 
         self._apply_config(self._load_config())
         if not self.auto_watch:
-            r.bind("<Return>", lambda e: self.on_start())
-        r.bind("<Escape>", lambda e: self.on_stop())
-        r.protocol("WM_DELETE_WINDOW", self.on_close)
+            self.root.bind("<Return>", lambda e: self.on_start())
+        self.root.bind("<Escape>", lambda e: self.on_stop())
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     # ---------- helpers ----------
     def get_client(self):
