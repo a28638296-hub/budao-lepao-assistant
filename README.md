@@ -1,5 +1,7 @@
 # 步道乐跑
 
+> 发布状态：v2.2.1 的定位修复源码与说明已同步，Windows 下载包尚未发布到 Releases。目前最新公开下载版仍为 v2.2.0，不包含本次定位修复。请以发行页实际列出的附件为准；需要新修复的开发者可按下方源码步骤运行。
+
 面向步道乐跑的非官方 Windows + MuMu 模拟器定位与步数测试工具，提供自动联动、跑道轨迹模拟、中文安装教程和免 Python 的 Windows 下载包。基于 [EdmundMad0309/budao-lepao-runner](https://github.com/EdmundMad0309/budao-lepao-runner) 修改，按 MIT 许可证开源。
 
 **下载即用版本：** [最新版发行包](https://github.com/a28638296-hub/budao-lepao-assistant/releases/latest) → 展开 **Assets** → 下载 `LePaoRunner-v2.2.1-windows-x64.zip`。普通用户不需要安装 Python。GitHub 的绿色 **Code → Download ZIP** 下载的是源码，不是可执行程序。
