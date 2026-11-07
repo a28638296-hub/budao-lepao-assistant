@@ -12,11 +12,12 @@ class LauncherTests(unittest.TestCase):
         client = Mock()
         client.adb_shell.side_effect = [
             '1',
+            '',  # No active RunService.
             'ACTIVITY app.lawnchair/.Launcher token\nmResumed=true mStopped=false\n'
             'history: com.lptiyu.tanke/.activities.main.MainActivity',
             'Status: ok\nComplete',
         ]
         result = Mock(returncode=0, stdout='{"is_android_started": true}')
-        with patch('launch.subprocess.run', return_value=result), patch('launch.MuMuLocationClient', return_value=client):
+        with patch('launch.subprocess.run', return_value=result), patch('launch.MuMuLocationClient', return_value=client), patch('launch.Path.is_file', return_value=False):
             launch.open_target({'root': 'C:/MuMu', 'index': 1})
         client.adb_shell.assert_called_with('am', 'start', '-W', '-n', 'com.lptiyu.tanke/.activities.splash.SplashActivity')

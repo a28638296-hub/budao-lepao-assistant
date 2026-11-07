@@ -10,7 +10,7 @@ from tkinter import ttk, filedialog, messagebox
 
 import gui
 from lepao.mumu import discover_mumu, MuMuLocationClient
-from lepao.autolink import resumed_activity
+from lepao.startup_location import restore_before_open
 
 SETTINGS = Path(gui._appdata_dir()) / "launcher.json"
 
@@ -109,15 +109,23 @@ def open_target(settings):
         try:
             if command("info", "-v", index).get("is_android_started"):
                 if client.adb_shell("getprop", "sys.boot_completed").strip() == "1":
-                    if resumed_activity(client.adb_shell("dumpsys", "activity", "top"))[0] is None:
-                        result = client.adb_shell("am", "start", "-W", "-n", "com.lptiyu.tanke/.activities.splash.SplashActivity")
-                        if "Error" in result or "Status: ok" not in result:
-                            raise RuntimeError("乐跑未成功打开：" + result)
-                    return
+                    break
         except (RuntimeError, subprocess.TimeoutExpired) as exc:
             last_error = str(exc)
         time.sleep(1)
-    raise RuntimeError("等待目标实例启动超时：" + last_error)
+    else:
+        raise RuntimeError("等待目标实例启动超时：" + last_error)
+    config = {}
+    for path in (gui.config_path(), gui.portable_config_path()):
+        if Path(path).is_file():
+            config = json.loads(Path(path).read_text(encoding="utf-8"))
+            break
+    report = restore_before_open(client, config)
+    if report.get("active_record"):
+        return
+    result = client.adb_shell("am", "start", "-W", "-n", "com.lptiyu.tanke/.activities.splash.SplashActivity")
+    if "Error" in result or "Status: ok" not in result:
+        raise RuntimeError("乐跑未成功打开：" + result)
 
 
 if __name__ == "__main__":
