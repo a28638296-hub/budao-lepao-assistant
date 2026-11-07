@@ -8,6 +8,7 @@ from .geo import offset_meters
 from .sensors import StepFeeder, cadence_for_speed
 from .track import ConvexBoundary
 from .routes import StadiumBand
+from .location_guard import require_inner_fix
 
 
 @dataclass
@@ -179,6 +180,7 @@ class RunSimulator:
         stats.started_at = t0
         next_tick = t0
         next_log = t0 + cfg.log_every_s
+        next_gps_check = t0 + 3
         next_kick = t0 + cfg.kick_every_s if cfg.kick_every_s > 0 else None
         lap_index = -1
         drift_n = 0.0
@@ -252,6 +254,9 @@ class RunSimulator:
                     if stats.errors <= 3 or stats.errors % 20 == 0:
                         self.log("定位下发失败 #%d: %s" % (stats.errors, exc))
 
+                if self.band and self.client and now >= next_gps_check:
+                    require_inner_fix(self.client.gps_status(), self.band)
+                    next_gps_check = now + 3
                 stats.distance_m = distance
                 if feeder is not None:
                     stats.steps = feeder.steps

@@ -3,12 +3,13 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 import gui
-from lepao.mumu import discover_mumu
+from lepao.mumu import discover_mumu, MuMuLocationClient
 
 SETTINGS = Path(gui._appdata_dir()) / "launcher.json"
 
@@ -82,7 +83,38 @@ def main():
         return
     os.environ["MUMU_HOME"] = settings["root"]
     os.environ["MUMU_VM_INDEX"] = str(settings["index"])
+    open_target(settings)
     gui.main()
+
+
+def open_target(settings):
+    """Launch the selected device, wait for ADB, then open the App."""
+    manager = str(Path(settings["root"], "nx_main", "MuMuManager.exe"))
+    def command(*args):
+        result = subprocess.run([manager, *args], capture_output=True, text=True,
+                                encoding="utf-8", errors="replace", timeout=20,
+                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        if result.returncode:
+            raise RuntimeError(result.stderr or result.stdout)
+        return json.loads(result.stdout)
+    index = str(settings["index"])
+    info = command("info", "-v", index)
+    if not info.get("is_android_started"):
+        command("control", "-v", index, "launch")
+    deadline = time.monotonic() + 90
+    client = MuMuLocationClient(vm_index=settings["index"], manager_path=manager)
+    last_error = "设备未就绪"
+    while time.monotonic() < deadline:
+        try:
+            if command("info", "-v", index).get("is_android_started"):
+                if client.adb_shell("getprop", "sys.boot_completed").strip() == "1":
+                    if "com.lptiyu.tanke/" not in client.adb_shell("dumpsys", "activity", "top"):
+                        client.adb_shell("am", "start", "-n", "com.lptiyu.tanke/.activities.splash.SplashActivity")
+                    return
+        except (RuntimeError, subprocess.TimeoutExpired) as exc:
+            last_error = str(exc)
+        time.sleep(1)
+    raise RuntimeError("等待目标实例启动超时：" + last_error)
 
 
 if __name__ == "__main__":

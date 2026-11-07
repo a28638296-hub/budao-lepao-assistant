@@ -1,6 +1,6 @@
 # 从下载到首次检查：详细安装教程
 
-适用发行版：v2.2.0。助手运行在 Windows 电脑上，通过 MuMu 控制所选 Android 实例。不能把 Windows EXE 安装到安卓手机中。
+适用发行版：v2.2.1。助手运行在 Windows 电脑上，通过 MuMu 控制所选 Android 实例。不能把 Windows EXE 安装到安卓手机中。
 
 ## 1. 先分清需要安装的程序
 
@@ -47,12 +47,12 @@
 ## 5. 下载并解压 Windows 助手
 
 1. 打开 [最新版发行页](https://github.com/a28638296-hub/budao-lepao-assistant/releases/latest)。
-2. 展开 **Assets**，下载 `LePaoRunner-v2.2.0-windows-x64.zip` 和 `SHA256SUMS.txt`。后续版本以发行页文件名为准。
+2. 展开 **Assets**，下载 `LePaoRunner-v2.2.1-windows-x64.zip` 和 `SHA256SUMS.txt`。后续版本以发行页文件名为准。
 3. 不要选择 `Source code (zip)`；绿色 Code 按钮下的 Download ZIP 也是源码。
 4. 在下载目录打开 PowerShell，执行：
 
    ```powershell
-   Get-FileHash .\LePaoRunner-v2.2.0-windows-x64.zip -Algorithm SHA256
+   Get-FileHash .\LePaoRunner-v2.2.1-windows-x64.zip -Algorithm SHA256
    ```
 
 5. 将输出 Hash 与校验文件对应文件名那一行比较；字母大小写不影响比较。若不一致，停止使用并重新下载。
@@ -86,7 +86,7 @@
 
 默认坐标仅为公开示例。填写前阅读 [README 的六点坐标说明](../README.md#4-核对跑道坐标必须做)，核对坐标系、纬经度顺序和六个点的位置。界面顶部的方向文字描述行进方向；输入点编号请按 README 表格和 `track.py` 的六点定义填写，两者不要混淆。
 
-点击“保存默认”保存参数。自动联动每次启动默认关闭，需要核对后自行启用。具体状态顺序、暂停与停止行为见 [自动联动说明](../README.md#5-自动联动)。仅在获得授权的测试场景中使用模拟数据。
+点击“保存默认”保存参数。首次使用自动联动默认关闭；核对坐标后勾选并点击“保存默认”，后续启动会恢复此选择。具体状态顺序、暂停与停止行为见 [自动联动说明](../README.md#5-自动联动)。仅在获得授权的测试场景中使用模拟数据。
 
 首次观察保持模拟器窗口可见，不勾选“后台运行：把模拟器窗口移到屏幕外”。已隐藏时可点击“显示模拟器（看进度）”。同时观察 App 页面和助手运行日志；助手状态与 App 自身的记录状态是两回事。
 

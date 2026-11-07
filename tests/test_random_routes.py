@@ -61,13 +61,13 @@ class RandomRouteTests(unittest.TestCase):
                 self.band.require_segment(a, b)
                 offset = self.band.radial_distance(a) - self.band.radius
                 self.assertGreaterEqual(offset, -1.86)
-                self.assertLessEqual(offset, -0.09)
+                self.assertLessEqual(offset, -0.59)
             # At the same position around the oval, successive laps have distinct radii.
             for phase in range(0, 360, 15):
                 d = self.band.perimeter * phase / 360
                 offsets = [route_offset(plan, d, (i + phase / 360) / 5.6, self.band.perimeter)
                            for i in range(5)]
-                self.assertTrue(all(abs(b - a) > 0.24 for a, b in zip(offsets, offsets[1:])))
+                self.assertTrue(all(abs(b - a) > 0.15 for a, b in zip(offsets, offsets[1:])))
 
     def test_inner_grass_and_shortcut_are_rejected(self):
         middle = self.band.location(tuple((a + b) / 2 for a, b in zip(self.band.north, self.band.south)))

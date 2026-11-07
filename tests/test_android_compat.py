@@ -50,6 +50,16 @@ class AndroidCompatibilityTests(unittest.TestCase):
         client._adb.assert_called_once()
         client.manager.assert_not_called()
 
+    def test_read_timeout_reconnects_without_restarting_server(self):
+        import subprocess
+        client = self.client()
+        client._adb_serial = '127.0.0.1:17000'
+        client._adb = Mock(side_effect=[subprocess.TimeoutExpired('adb', 15),
+                                       output('disconnected'), output('connected'), output('1')])
+        self.assertEqual(client.adb_shell('getprop', 'sys.boot_completed'), '1')
+        self.assertEqual(client._adb.call_args_list[1].args, ('disconnect', '127.0.0.1:17000'))
+        self.assertEqual(client._adb.call_args_list[2].args, ('connect', '127.0.0.1:17000'))
+
     def test_android15_dump_shutdown_failure_requires_exact_success_marker(self):
         client = self.client()
         client._adb_serial = '127.0.0.1:17000'

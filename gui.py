@@ -27,6 +27,7 @@ from lepao.sim import RunConfig, RunSimulator  # noqa: E402
 from lepao.track import Track, stadium_waypoints  # noqa: E402
 from lepao.routes import StadiumBand, PreparedRoute, make_plan, read_history, save_plan  # noqa: E402
 from lepao.autolink import AutoLink, ScreenObserver  # noqa: E402
+from lepao.location_guard import IdleLocationGuard, confirmed_start
 
 HERE = APP_DIR
 CFG_PATH = os.path.join(HERE, "config.json")
@@ -135,7 +136,7 @@ class App:
     # ---------- UI ----------
     def _build(self):
         r = self.root
-        r.title("步道乐跑 · 社区版 v2.2.0")
+        r.title("步道乐跑 · 社区版 v2.2.1")
         r.geometry("720x920")
         r.minsize(620, 800)
 
@@ -222,7 +223,7 @@ class App:
         ttk.Button(btns, text="保存默认", command=self.on_save).pack(side="left", padx=8, ipady=8)
         self.var_auto_enabled = tk.BooleanVar(value=False)
         if self.auto_watch:
-            ttk.Checkbutton(r, text="启用自动联动（已核对六点跑道坐标；默认示例为南宁学院）", variable=self.var_auto_enabled).pack(anchor="w", padx=10)
+            ttk.Checkbutton(r, text="启用自动联动（核对坐标后勾选，点保存默认可记住；示例为南宁学院）", variable=self.var_auto_enabled).pack(anchor="w", padx=10)
         self.route_status = tk.StringVar(value="自动联动：打开乐跑首页，起点就绪后直接点“开始乐跑”" if self.auto_watch else
                                         "先结束上一条乐跑记录 → 准备起点 → 乐跑开始记录 → 开始代跑")
         ttk.Label(r, textvariable=self.route_status, wraplength=650).pack(anchor="w", padx=10, pady=4)
@@ -304,9 +305,14 @@ class App:
             self.root.after(1000, self._poll_screen)
             return
         observer = self._get_observer()
+        route = self.prepared_route
+        if not hasattr(self, "idle_location_guard"):
+            self.idle_location_guard = IdleLocationGuard()
         def poll():
             try:
                 state, error = observer.read(), None
+                if state == "idle" and not self.preparing and not (self.worker and self.worker.is_alive()):
+                    self.idle_location_guard.check(self.get_client(), observer, route)
             except Exception as exc:
                 state, error = "unknown", str(exc)
             self.msgq.put(("screen", (state, error)))
@@ -415,6 +421,9 @@ class App:
 
     def _apply_config(self, cfg):
         gui = cfg.get("gui", {}) or {}
+        # Only a saved explicit confirmation may enable the next launch.
+        self.var_auto_enabled.set(bool(gui.get("auto_link_confirmed", False)) and
+                                  bool(cfg.get("track", {}).get("points_as_entered")))
         kind = gui.get("coord_system")
         if kind:
             for label, val in SYS_OPTIONS.items():
@@ -547,7 +556,7 @@ class App:
                     if self.closing.is_set():
                         raise RuntimeError("助手已关闭，取消准备")
                     gps = cli.gps_status()
-                    if gps["enabled"] and gps["location"] and haversine(*gps["location"], *route.position_at(0)) < 15:
+                    if confirmed_start(gps, route):
                         break
                     if automatic and gps["enabled"]:
                         # On a cold launch, the home screen may have no GPS listener.
@@ -581,9 +590,9 @@ class App:
             return
         self.prepared_route, self.prepared_key = route, key
         self.btn_start["state"] = "normal"
-        self.route_status.set("随机起点已就绪、GPS 已开启：直接点“开始乐跑”，助手自动跟随" if automatic else
-                              "GPS 已就绪，起点已准备；在乐跑开始记录后，点“开始代跑”")
-        if gps["location"] and haversine(*gps["location"], *route.position_at(0)) < 15:
+        self.route_status.set("实际 GPS 已确认内圈起点" if confirmed_start(gps, route) else
+                              "起点已下发；等待 App 请求 GPS，尚未确认实际位置")
+        if confirmed_start(gps, route):
             self._log("GPS 已开启，起点误差 %.1f 米，卫星数 %s" %
                       (haversine(*gps["location"], *route.position_at(0)), gps.get("satellites")))
         else:
@@ -605,7 +614,8 @@ class App:
         cfg.pause_when_shown = bool(self.var_pause_when_shown.get())
         cfg.coord_system = SYS_OPTIONS[self.csys.get()]
         data = {
-            "gui": {"coord_system": SYS_OPTIONS[self.csys.get()]},
+            "gui": {"coord_system": SYS_OPTIONS[self.csys.get()],
+                    "auto_link_confirmed": self.var_auto_enabled.get()},
             "mumu": {"vm_index": self.disc.get("vm_index", 0),
                      "gateway_port": self.disc.get("gateway_port"), "prefer_http": True},
             "run": cfg.__dict__,
@@ -641,13 +651,13 @@ class App:
                 cfg.start_delay_s = 0.0
             RunSimulator(track, None, cfg, logger=lambda _: None)
             self.get_client().ensure_gps_enabled()
-            if automatic:
-                gps = self.get_client().gps_status()
-                if not (gps["enabled"] and gps["location"] and
-                        haversine(*gps["location"], *track.position_at(0)) < 15):
+            gps = self.get_client().gps_status()
+            if not confirmed_start(gps, track):
+                if automatic:
                     self.autolink.consumed = False
-                    self.route_status.set("检测到乐跑已开始，等待 GPS 确认起点后自动移动…")
+                    self.route_status.set("等待实际 GPS 落在内圈起点（误差≤5米）；未确认前不移动")
                     return
+                raise ValueError("实际 GPS 尚未确认在内圈起点，请回首页恢复定位")
             save_plan(self.route_history_path, track.plan, "started")
         except (ValueError, OSError, RuntimeError) as exc:
             if automatic:

@@ -139,7 +139,7 @@ def make_plan(band, laps, history=(), rng=None):
     separated = [c for c in choices if c[0] >= 20]
     phase = rng.choice(separated)[1] if separated else max(choices)[1]
     # Entire generated route stays inside the reference oval, including waves.
-    lo, hi = rng.uniform(-1.75, -1.65), rng.uniform(-0.3, -0.2)
+    lo, hi = rng.uniform(-1.75, -1.65), rng.uniform(-0.8, -0.7)
     if rng.choice((True, False)):
         lo, hi = hi, lo
     plan = dict(id=uuid.uuid4().hex, created_at=time.time(), laps=laps, start_phase_m=phase,

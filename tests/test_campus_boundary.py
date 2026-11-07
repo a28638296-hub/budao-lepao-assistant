@@ -20,6 +20,9 @@ class Client:
     def set_wgs84(self, lat, lon):
         self.points.append((lat, lon))
 
+    def gps_status(self):
+        return {"enabled": True, "location": self.points[-1] if self.points else None}
+
     def unpark_window(self):
         return True
 
@@ -66,7 +69,9 @@ class CampusBoundaryTests(unittest.TestCase):
         self.assertEqual(self.cfg.lap_line_drift_m, 0)
         self.assertFalse(self.cfg.hide_window)
         client, clock = Client(), Clock()
-        sim = RunSimulator(Track(self.points), client, self.cfg, logger=lambda _: None)
+        from lepao.routes import StadiumBand, PreparedRoute, make_plan
+        band = StadiumBand(self.cfg.track_band_anchors_wgs84)
+        sim = RunSimulator(PreparedRoute(band, make_plan(band, self.cfg.laps)), client, self.cfg, logger=lambda _: None)
         with patch("lepao.sim.time.time", clock.time), patch("lepao.sim.time.sleep", clock.sleep):
             sim.run()
         self.assertTrue(client.visible)

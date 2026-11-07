@@ -350,7 +350,17 @@ class MuMuGateway:
             raise RuntimeError("未找到 adb")
         if not getattr(self, "_adb_serial", None):
             self._resolve_adb_serial()
-        out = self._adb("-s", self._adb_serial, "shell", *args)
+        try:
+            out = self._adb("-s", self._adb_serial, "shell", *args)
+        except subprocess.TimeoutExpired:
+            # A stale socket after reboot can hang despite adb listing 'device'.
+            # Retry reads only; never repeat an action with an unknown outcome.
+            if not args or args[0] not in ("getprop", "dumpsys", "cat", "uiautomator"):
+                raise
+            self._resolve_adb_serial()
+            self._adb("disconnect", self._adb_serial)
+            self._adb("connect", self._adb_serial)
+            out = self._adb("-s", self._adb_serial, "shell", *args)
         error = (out.stderr or out.stdout).strip()
         if out.returncode and re.search(r"device .*not found|device offline|device not found|closed|cannot connect", error, re.I):
             self._resolve_adb_serial()
