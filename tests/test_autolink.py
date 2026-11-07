@@ -21,6 +21,15 @@ def screen(*pairs):
 
 
 class AutoLinkTests(unittest.TestCase):
+    def test_prestart_map_with_visible_back_is_idle_unless_service_running(self):
+        block = (ROOT / 'tests/fixtures/prestart-view-hierarchy.txt').read_text(encoding='utf8')
+        self.assertEqual(classify_run_views(block), 'idle')
+        dump = 'ACTIVITY com.lptiyu.tanke/' + RUN + ' token\n mResumed=true mStopped=false\n' + block
+        client = Mock()
+        client.adb_shell.side_effect = [dump, '']
+        self.assertEqual(ScreenObserver(client).read(), 'idle')
+        client.adb_shell.side_effect = [dump, 'com.lptiyu.tanke/.services.RunService']
+        self.assertEqual(ScreenObserver(client).read(), 'unknown')
     def test_real_textprogressbar_views_without_accessibility_text(self):
         for filename, expected in [("run-view-hierarchy.txt", "running"),
                                    ("paused-view-hierarchy.txt", "paused")]:

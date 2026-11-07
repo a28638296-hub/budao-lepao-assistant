@@ -50,6 +50,9 @@ def classify_run_views(block):
         if stop[1]:
             return "paused"
         if stop[0] == "G":
+            back = states.get("img_back")
+            if back and back[1]:
+                return "idle"
             return "running"
     return "unknown"
 
@@ -90,7 +93,12 @@ class ScreenObserver:
             if activity == ".activities.school_run.MapRunActivity":
                 # The clock refreshes continuously: `uiautomator dump` waits for
                 # idle and times out here even though the recording is active.
-                return classify_run_views(active_block)
+                state = classify_run_views(active_block)
+                if state == "idle":
+                    services = self.client.adb_shell("dumpsys", "activity", "services", PACKAGE)
+                    if ".services.RunService" in services:
+                        return "unknown"
+                return state
             path = "/sdcard/codex-lepao-watch.xml"
             result = self.client.adb_shell("uiautomator", "dump", path)
             if "dumped to" not in result:

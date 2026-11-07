@@ -1,0 +1,5 @@
+                        androidx.constraintlayout.widget.ConstraintLayout{f1ef4d2 V.E...... ........ 0,1730-1080,1920 #7f0907fb app:id/ll_run_control}
+                          androidx.appcompat.widget.AppCompatImageView{b3269a3 VFED..C.. ........ 0,23-121,144 #7f09034f app:id/img_back}
+                          androidx.appcompat.widget.AppCompatImageView{7b8d4a0 VFED..C.. ........ 959,23-1080,144 #7f09036c app:id/img_refresh_log_point}
+                          com.lptiyu.tanke.widget.TextProgressBar{e3b7859 VFED..C.. ........ 343,23-775,167 #7f090f8b app:id/tv_start_pause_continue_run}
+                          com.lptiyu.tanke.widget.TextProgressBar{bd38c1e GFED..C.. ......I. 0,0-0,0 #7f090f9a app:id/tv_stoprun}

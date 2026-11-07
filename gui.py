@@ -562,7 +562,8 @@ class App:
                     raise RuntimeError("乐跑已离开待跑首页，取消移动起点；返回首页后自动重试")
                 cli.address = "南宁学院田径场－本次随机起点"
                 cli.set_wgs84(*route.position_at(0))
-                cli.kick_location()
+                # Do not toggle GPS here: some App builds drop their listener
+                # when the switch is cycled and never request another fix.
                 deadline = time.monotonic() + 10
                 while True:
                     if self.closing.is_set():
