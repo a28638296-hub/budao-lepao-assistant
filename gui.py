@@ -39,6 +39,8 @@ STARTUP_VERIFIED_AT = float("-inf")
 def _appdata_dir():
     base = os.environ.get("APPDATA") or os.path.expanduser("~")
     d = os.path.join(base, "LePaoRunnerCommunity")
+    if os.path.isfile(os.path.join(HERE, "portable-mode.txt")):
+        d = os.path.join(HERE, "user-data")
     try:
         os.makedirs(d, exist_ok=True)
     except Exception:

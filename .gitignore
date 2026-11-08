@@ -11,3 +11,5 @@ launcher.json
 *.apk
 deployment/
 .env*
+user-data/
+portable-mode.txt
