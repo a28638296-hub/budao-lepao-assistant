@@ -1,5 +1,6 @@
 """Verify the saved location before exposing the App to MuMu's cached fix."""
 import time
+import statistics
 
 from .autolink import PACKAGE, ScreenObserver, resumed_activity
 from .geo import bd09_to_wgs84, gcj02_to_wgs84, haversine
@@ -38,14 +39,31 @@ def restore_before_open(client, config, *, sleep=time.sleep, clock=time.monotoni
     if "Error" in result or "Status: ok" not in result:
         raise RuntimeError("GPS 诊断组件未成功打开：" + result)
     deadline, matches = clock() + 25, 0
+    client.position_correction = (0.0, 0.0)
+    samples = []
     while clock() < deadline:
+        if ".services.RunService" in client.adb_shell("dumpsys", "activity", "services", PACKAGE):
+            raise RuntimeError("校正期间乐跑已经开始，停止调整起点")
         client.set_wgs84(*target)
         sleep(1)
         gps = client.gps_status()
         point = gps.get("location")
         error = haversine(*point, *target) if point else None
-        matches = matches + 1 if gps.get("enabled") and error is not None and error < 3 else 0
+        near = gps.get("enabled") and error is not None and error < 3
+        inside = near and band.inner <= band.radial_distance(point) <= band.radius
+        matches = matches + 1 if inside and error < 0.35 else 0
         if matches >= 3:
             return {"restored": True, "error_m": error,
-                    "correction": tuple(target[i] - point[i] for i in (0, 1))}
+                    "gps": gps, "target_wgs84": target,
+                    "correction": client.position_correction}
+        samples = (samples + [point])[-3:] if near else []
+        if len(samples) == 3 and not (inside and error < 0.35):
+            centre = tuple(statistics.median(p[i] for p in samples) for i in (0, 1))
+            if max(haversine(*p, *centre) for p in samples) < 0.5:
+                correction = tuple(client.position_correction[i] + target[i] - centre[i] for i in (0, 1))
+                if haversine(*target, *(target[i] + correction[i] for i in (0, 1))) > 3:
+                    raise RuntimeError("启动定位补偿超过 3 米，请检查坐标")
+                client.position_correction = correction
+                samples = []
+                matches = 0
     raise RuntimeError("25 秒内未确认实际 GPS 回到保存的目标位置，暂不打开乐跑；请检查诊断组件定位权限")

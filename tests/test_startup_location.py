@@ -33,6 +33,21 @@ class StartupLocationTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "25 秒"):
                 self.run_restore()
 
+    def test_correction_is_applied_and_read_back_before_open(self):
+        bias = (0.00001, 0.00001)
+        actual = [None]
+        def send(lat, lon):
+            actual[0] = tuple((lat, lon)[i] + self.client.position_correction[i] + bias[i]
+                              for i in (0, 1))
+        self.client.set_wgs84.side_effect = send
+        self.client.gps_status.side_effect = lambda: {"enabled": True, "location": actual[0]}
+        report = self.run_restore()
+        self.assertTrue(report["restored"])
+        self.assertLess(report["error_m"], 0.01)
+        self.assertGreaterEqual(self.client.gps_status.call_count, 6)
+        for i in (0, 1):
+            self.assertAlmostEqual(report["correction"][i], -bias[i], places=10)
+
     def test_existing_record_is_untouched(self):
         self.client.adb_shell.side_effect = None
         self.client.adb_shell.return_value = ".services.RunService"

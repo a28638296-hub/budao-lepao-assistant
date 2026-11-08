@@ -34,6 +34,7 @@ HERE = APP_DIR
 CFG_PATH = os.path.join(HERE, "config.json")
 _MUTEX = None
 STARTUP_POSITION_CORRECTION = (0.0, 0.0)
+STARTUP_VERIFIED_AT = float("-inf")
 
 def _appdata_dir():
     base = os.environ.get("APPDATA") or os.path.expanduser("~")
@@ -64,16 +65,24 @@ def acquire_single_instance():
     global _MUTEX
     if sys.platform != "win32":
         return True
-    try:
-        import ctypes
-        k32 = ctypes.windll.kernel32
-        _MUTEX = k32.CreateMutexW(None, False, "Local\\\\LePaoRunner_SingleInstance_v2")
-        ERROR_ALREADY_EXISTS = 183
-        if k32.GetLastError() == ERROR_ALREADY_EXISTS:
-            return False
+    import ctypes
+    from ctypes import wintypes
+    if _MUTEX:
         return True
-    except Exception:
-        return True
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateMutexW.argtypes = (ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR)
+    k32.CreateMutexW.restype = wintypes.HANDLE
+    k32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    handle = k32.CreateMutexW(None, False, r"Local\LePaoRunner_SingleInstance_v2")
+    error = ctypes.get_last_error()
+    if not handle:
+        raise ctypes.WinError(error)
+    if error == 183:
+        k32.CloseHandle(handle)
+        return False
+    _MUTEX = handle
+    return True
+
 
 # 本机默认：南宁学院田径场 6 个边界近似点（GCJ-02）。
 # 点位依据见 deployment/track-map/selected-points.json。
@@ -121,7 +130,7 @@ class App:
         self.auto_retry_at = 0.0
         self.last_screen = None
         self.last_confirmed_at = time.monotonic()
-        self.last_idle_at = float("-inf")
+        self.last_idle_at = STARTUP_VERIFIED_AT
         self.route_history_path = os.path.join(_appdata_dir(), "route_history.json")
         self._build()
         self.root.after(120, self._drain)

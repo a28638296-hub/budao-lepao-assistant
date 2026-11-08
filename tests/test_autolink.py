@@ -187,7 +187,8 @@ class AutoLinkTests(unittest.TestCase):
         import gui, time
         from lepao.routes import StadiumBand
         root = tk.Tk(); root.withdraw()
-        app = gui.App(root)
+        with patch.object(gui, "STARTUP_VERIFIED_AT", time.monotonic()):
+            app = gui.App(root)
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 app.route_history_path = str(pathlib.Path(tmp) / "history.json")
@@ -195,7 +196,6 @@ class AutoLinkTests(unittest.TestCase):
                 app.observer.read.return_value = "running"
                 band = StadiumBand(app.read_anchors())
                 app.client.gps_status.return_value = {"enabled": True, "location": band.point(100, -1)}
-                app.last_idle_at = time.monotonic()
                 with patch.object(app, "on_start") as start:
                     app._handle_screen("running")
                     start.assert_called_once_with(automatic=True)
