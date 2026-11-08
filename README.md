@@ -1,20 +1,20 @@
 # 步道乐跑
 
-> 发布状态：v2.2.1 的定位修复源码与说明已同步，Windows 下载包尚未发布到 Releases。目前最新公开下载版仍为 v2.2.0，不包含本次定位修复。请以发行页实际列出的附件为准；需要新修复的开发者可按下方源码步骤运行。
+> 最新版本：v2.3.0。Windows 下载包包含定位、冷启动联动及固定配置目录修复。完整解压即可运行，无需安装 Python；首次仍需完成实例选择、本人登录、权限与跑道配置。
 
 面向步道乐跑的非官方 Windows + MuMu 模拟器定位与步数测试工具，提供自动联动、跑道轨迹模拟、中文安装教程和免 Python 的 Windows 下载包。基于 [EdmundMad0309/budao-lepao-runner](https://github.com/EdmundMad0309/budao-lepao-runner) 修改，按 MIT 许可证开源。
 
-**下载即用版本：** [最新版发行包](https://github.com/a28638296-hub/budao-lepao-assistant/releases/latest) → 展开 **Assets** → 下载发行页实际提供的 Windows ZIP（目前为 v2.2.0；本次修复请使用源码）。普通用户不需要安装 Python。GitHub 的绿色 **Code → Download ZIP** 下载的是源码，不是可执行程序。
+**Windows 下载：** [LePaoRunner-v2.3.0-windows-x64.zip](https://github.com/a28638296-hub/budao-lepao-assistant/releases/download/v2.3.0/LePaoRunner-v2.3.0-windows-x64.zip) · [发行说明与 SHA256](https://github.com/a28638296-hub/budao-lepao-assistant/releases/tag/v2.3.0)。绿色 Code → Download ZIP 是源码，不是可执行程序。
 
 > 生成的是模拟运动数据，并不代表真实跑步。用于获得授权的开发、演示与定位测试；请勿提交虚假考勤或成绩。安装包不包含第三方 App，不代替本人登录，也不保证记录被服务端认定有效。
 
 ## 安装与首次使用
 
-### v2.2.1：重新打开后定位跑偏的处理
+### v2.3.0：重新打开与自动联动
 
-当前源码启动器会先启动所选实例，等待 Android 完成启动，再使用保存的六点恢复位置。它短暂打开 GPSTest 请求 GPS，连续三次确认 Android 实际位置与目标相距小于 3 米后才打开乐跑；超时会报错，不会把下发成功当成定位成功。已有跑步服务运行时保留现有记录和位置。首次尚未保存坐标时进入普通设置流程，不承诺定位已经恢复。
+新版启动器会先启动所选实例，等待 Android 完成启动，再使用保存的六点恢复位置。它短暂打开 GPSTest 请求 GPS，连续三次确认 Android 实际位置与目标相距小于 0.35 米且在内圈后才打开乐跑；超时会报错，不会把下发成功当成定位成功。已有跑步服务运行时保留现有记录和位置。首次尚未保存坐标时进入普通设置流程，不承诺定位已经恢复。
 
-升级源码前请按 [启动定位组件安装步骤](docs/INSTALL.md#启动定位组件与重新打开验证) 安装 GPSTest 的 osmdroid 版本并授权。随后通过助手启动，核对六点，勾选“启用自动联动”并保存，保持助手运行。默认示例已按 App 地图重新校准，但不会覆盖已有配置；旧用户必须自行核对或重新填写六点。
+安装或升级前请按 [启动定位组件安装步骤](docs/INSTALL.md#启动定位组件与重新打开验证) 安装 GPSTest 的 osmdroid 版本并授权。随后通过助手启动，核对六点，勾选“启用自动联动”并保存，保持助手运行。默认示例已按 App 地图重新校准，但不会覆盖已有配置；旧用户必须自行核对或重新填写六点。
 
 **“起点已下发”不等于实际 GPS 已到位。** App 请求定位后，助手要求实际 GPS 在配置的内圈范围内，且距准备起点不超过 5 米，才开始移动；运行中每 3 秒读回 GPS，越界或无定位时停止。助手不能阻止用户在 App 内提前开始一条记录；不要在恢复定位前开始，也不要期待在记录中强制跳回操场。
 
@@ -34,8 +34,9 @@
 
 1. 打开上面的最新版发行页，下载 Windows ZIP 和 `SHA256SUMS.txt`。
 2. 将 ZIP **完整解压**到可写目录，如 `D:\Apps\LePaoRunner`；不要直接在压缩包里双击程序。
-3. 可在 PowerShell 执行 `Get-FileHash .\LePaoRunner-v2.2.1-windows-x64.zip -Algorithm SHA256`，与发行页校验文件核对。
-4. 双击 `LePaoRunner.exe`。EXE 未购买代码签名证书，Windows 可能提示未知发布者；先核对下载来源和校验值，不要关闭杀毒软件。
+3. 可在 PowerShell 执行 `Get-FileHash .\LePaoRunner-v2.3.0-windows-x64.zip -Algorithm SHA256`，与发行页校验文件核对。
+4. 保留 ZIP 自带的 `portable-mode.txt`。配置统一保存在程序旁的 `user-data`；不要只复制 EXE 或把程序放在不可写目录。
+5. 双击 `LePaoRunner.exe`。EXE 未购买代码签名证书，Windows 可能提示未知发布者；先核对下载来源和校验值，不要关闭杀毒软件。
 
 ### 3. 首次设置模拟器
 
@@ -129,3 +130,7 @@ python -m venv .venv
 - APK、微信、MuMu 均需另行安装，不随发行包分发。账号登录问题需由对应服务解决。
 
 来源、许可证及第三方说明见 [NOTICE.md](NOTICE.md) 与 [LICENSE](LICENSE)。
+
+### 维护者：生成下载包
+
+先执行 `build_exe.ps1` 构建 EXE，再执行 `python package_release.py`。ZIP 和 `SHA256SUMS.txt` 输出到 `dist`，脚本只收录公开文件并自动加入 `portable-mode.txt` 和中文快速入门，不复制个人配置或日志。

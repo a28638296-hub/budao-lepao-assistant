@@ -53,11 +53,7 @@ def portable_config_path():
 
 
 def config_path():
-    """正式存档固定放 %APPDATA%\\LePaoRunner\\config.json。
-
-    这样重新打包 exe、换目录、甚至删掉 dist 都不会丢配置；
-    如果 exe 同目录存在 config.json，则把它当作便携覆盖（优先读取，保存时同步更新）。
-    """
+    """配置保存到选定数据目录；发行 ZIP 默认使用程序旁的 user-data。"""
     return os.path.join(_appdata_dir(), "config.json")
 
 
@@ -150,7 +146,7 @@ class App:
     # ---------- UI ----------
     def _build(self):
         r = self.root
-        r.title("步道乐跑 · 社区版 v2.2.1")
+        r.title("步道乐跑 · 社区版 v2.3.0")
         width = min(760, r.winfo_screenwidth() - 60)
         height = min(900, r.winfo_screenheight() - 100)
         r.geometry("%dx%d+20+20" % (width, height))

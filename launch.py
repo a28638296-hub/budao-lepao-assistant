@@ -4,6 +4,8 @@ import os
 import subprocess
 import sys
 import time
+import threading
+import queue
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -76,7 +78,14 @@ def main():
         route = PreparedRoute(band, make_plan(band, cfg.laps))
         output = Path(sys.argv[sys.argv.index("--smoke-test") + 1])
         output.write_text(json.dumps({"ok": True, "route_points": len(route.path),
-                                     "direction": route.plan["direction"], "device_mutations": 0}), encoding="utf-8")
+                                     "direction": route.plan["direction"], "device_mutations": 0,
+                                     "data_dir": gui._appdata_dir(), "version": "2.3.0"}), encoding="utf-8")
+        root.destroy()
+        return
+    if not gui.acquire_single_instance():
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showinfo("助手已打开", "助手已经运行，请使用现有窗口。", parent=root)
         root.destroy()
         return
     settings = configure()
@@ -84,11 +93,61 @@ def main():
         return
     os.environ["MUMU_HOME"] = settings["root"]
     os.environ["MUMU_VM_INDEX"] = str(settings["index"])
-    open_target(settings)
-    gui.main()
+    root = tk.Tk()
+    root.title("步道乐跑 v2.3.0 · 正在启动")
+    root.geometry("620x190")
+    status = tk.StringVar(value="正在连接所选 MuMu 实例…")
+    ttk.Label(root, textvariable=status, wraplength=580).pack(padx=20, pady=20)
+    bar = ttk.Progressbar(root, mode="indeterminate")
+    bar.pack(fill="x", padx=20)
+    bar.start()
+    elapsed = tk.StringVar()
+    ttk.Label(root, textvariable=elapsed).pack(pady=12)
+    messages = queue.Queue()
+    cancelled = threading.Event()
+    started = time.monotonic()
+    def progress(message):
+        if cancelled.is_set():
+            raise RuntimeError("启动已取消")
+        messages.put(("status", message))
+    def work():
+        try:
+            open_target(settings, progress)
+            messages.put(("ready", None))
+        except Exception as exc:
+            messages.put(("error", str(exc)))
+    def close():
+        cancelled.set()
+        root.destroy()
+    root.protocol("WM_DELETE_WINDOW", close)
+    def poll():
+        elapsed.set("已等待 %d 秒；请勿重复打开助手" % (time.monotonic() - started))
+        try:
+            while True:
+                kind, value = messages.get_nowait()
+                if kind == "status":
+                    status.set(value)
+                elif kind == "error":
+                    bar.stop()
+                    messagebox.showerror("启动未完成", value, parent=root)
+                    close()
+                    return
+                elif kind == "ready":
+                    bar.stop()
+                    for widget in root.winfo_children():
+                        widget.destroy()
+                    root.call("tk", "scaling", 1.2)
+                    gui.App(root, auto_watch=True)
+                    return
+        except queue.Empty:
+            pass
+        root.after(150, poll)
+    threading.Thread(target=work, daemon=True).start()
+    root.after(100, poll)
+    root.mainloop()
 
 
-def open_target(settings):
+def open_target(settings, progress=lambda message: None):
     """Launch the selected device, wait for ADB, then open the App."""
     manager = str(Path(settings["root"], "nx_main", "MuMuManager.exe"))
     def command(*args):
@@ -101,7 +160,9 @@ def open_target(settings):
     index = str(settings["index"])
     info = command("info", "-v", index)
     if not info.get("is_android_started"):
+        progress("正在启动所选实例，首次启动可能需要 1～2 分钟…")
         command("control", "-v", index, "launch")
+    progress("等待 Android 启动与 ADB 连接…")
     deadline = time.monotonic() + 90
     client = MuMuLocationClient(vm_index=settings["index"], manager_path=manager)
     last_error = "设备未就绪"
@@ -120,12 +181,14 @@ def open_target(settings):
         if Path(path).is_file():
             config = json.loads(Path(path).read_text(encoding="utf-8"))
             break
+    progress("正在读取并校正实际 GPS；可能暂时显示 GPSTest…")
     report = restore_before_open(client, config)
     gui.STARTUP_POSITION_CORRECTION = report.get("correction", (0.0, 0.0))
     if report.get("restored"):
         gui.STARTUP_VERIFIED_AT = time.monotonic()
     if report.get("active_record"):
         return
+    progress("正在打开步道乐跑…")
     result = client.adb_shell("am", "start", "-W", "-n", "com.lptiyu.tanke/.activities.splash.SplashActivity")
     if "Error" in result or "Status: ok" not in result:
         raise RuntimeError("乐跑未成功打开：" + result)
