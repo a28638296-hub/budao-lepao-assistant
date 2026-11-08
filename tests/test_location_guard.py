@@ -8,10 +8,33 @@ from unittest.mock import Mock
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from lepao.routes import StadiumBand, PreparedRoute, make_plan
-from lepao.location_guard import IdleLocationGuard, confirmed_start, require_inner_fix
+from lepao.location_guard import IdleLocationGuard, confirmed_start, require_inner_fix, settle_start
 
 
 class LocationGuardTests(unittest.TestCase):
+    def test_stationary_bias_is_corrected_without_relaxing_boundary(self):
+        self.observer.read.return_value = "idle"
+        self.client.position_correction = (0, 0)
+        target = self.route.position_at(0)
+        bias = (0.00001, 0.00001)
+        self.client.gps_status.side_effect = lambda: {"enabled": True, "location": tuple(
+            target[i] + self.client.position_correction[i] + bias[i] for i in (0, 1))}
+        result = settle_start(self.client, self.observer, self.route, sleep=lambda _: None)
+        self.assertTrue(confirmed_start(result, self.route))
+        self.assertAlmostEqual(self.client.position_correction[0], -bias[0])
+
+    def test_correction_never_uses_distant_fix_or_active_record(self):
+        self.client.position_correction = (0, 0)
+        self.observer.read.return_value = "idle"
+        with self.assertRaises(RuntimeError):
+            settle_start(self.client, self.observer, self.route, sleep=lambda _: None)
+        self.assertEqual(self.client.position_correction, (0, 0))
+        self.client.reset_mock()
+        self.observer.read.return_value = "running"
+        with self.assertRaises(RuntimeError):
+            settle_start(self.client, self.observer, self.route, sleep=lambda _: None)
+        self.client.set_wgs84.assert_not_called()
+
     def setUp(self):
         cfg = json.loads((ROOT / "config.example.json").read_text(encoding="utf8"))
         self.band = StadiumBand(cfg["run"]["track_band_anchors_wgs84"])

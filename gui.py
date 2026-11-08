@@ -27,7 +27,7 @@ from lepao.sim import RunConfig, RunSimulator  # noqa: E402
 from lepao.track import Track, stadium_waypoints  # noqa: E402
 from lepao.routes import StadiumBand, PreparedRoute, make_plan, read_history, save_plan  # noqa: E402
 from lepao.autolink import AutoLink, ScreenObserver  # noqa: E402
-from lepao.location_guard import IdleLocationGuard, confirmed_start
+from lepao.location_guard import IdleLocationGuard, confirmed_start, settle_start
 
 HERE = APP_DIR
 CFG_PATH = os.path.join(HERE, "config.json")
@@ -544,7 +544,7 @@ class App:
         self.preparing = True
         self.route_status.set("正在自动准备随机起点并确认 GPS，请稍候…" if automatic else "正在准备起点…")
         cli = self.get_client()
-        observer = self._get_observer() if automatic else None
+        observer = self._get_observer()
 
         def prepare():
             try:
@@ -564,20 +564,7 @@ class App:
                 cli.set_wgs84(*route.position_at(0))
                 # Do not toggle GPS here: some App builds drop their listener
                 # when the switch is cycled and never request another fix.
-                deadline = time.monotonic() + 10
-                while True:
-                    if self.closing.is_set():
-                        raise RuntimeError("助手已关闭，取消准备")
-                    gps = cli.gps_status()
-                    if confirmed_start(gps, route):
-                        break
-                    if automatic and gps["enabled"]:
-                        # On a cold launch, the home screen may have no GPS listener.
-                        # Keep this acknowledged start; verify the fix before motion.
-                        break
-                    if time.monotonic() >= deadline:
-                        raise RuntimeError("GPS 尚未确认新起点定位，请保持乐跑首页打开")
-                    time.sleep(0.5)
+                gps = settle_start(cli, observer, route, self.closing.is_set)
                 save_plan(self.route_history_path, plan, "prepared")
                 return route, (points, cfg.laps), gps, None, automatic
             except Exception as exc:

@@ -406,6 +406,15 @@ class MuMuGateway:
     def gps_status(self):
         enabled = self.location_enabled()
         dump = self.adb_shell("dumpsys", "location")
+        # Passive provider may retain an old GPS fix after the active GPS
+        # provider has moved. Never accept that first matching cache entry.
+        provider = re.search(r"(?m)^([ \t]*)gps provider:\s*\n", dump)
+        if provider:
+            rest = dump[provider.end():]
+            end = re.search(r"(?m)^" + re.escape(provider[1]) + r"\S", rest)
+            dump = rest[:end.start()] if end else rest
+        elif re.search(r"(?m)^\s*\w+ provider:", dump):
+            dump = ""
         fix = re.search(r"last\s*location\s*[:=]\s*Location\[gps\s+(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)[^\n]*", dump, re.I)
         sat = re.search(r"satellites=(\d+)", fix.group(0)) if fix else None
         return {"enabled": enabled,
@@ -441,8 +450,11 @@ class MuMuLocationClient(MuMuGateway):
                          adb_path=adb_path, vm_index=vm_index, timeout=timeout, address=address)
         self.prefer_http = prefer_http
         self.errors = 0
+        self.position_correction = (0.0, 0.0)
 
     def set_wgs84(self, lat, lon):
+        lat += self.position_correction[0]
+        lon += self.position_correction[1]
         lon_bd, lat_bd = wgs84_to_bd09(lon, lat)
         try:
             return self.set_location_bd(lat_bd, lon_bd)

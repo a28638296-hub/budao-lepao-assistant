@@ -135,42 +135,23 @@ class AutoLinkTests(unittest.TestCase):
         finally:
             root.destroy()
 
-    def test_cold_home_prepares_once_then_waits_for_fix_and_auto_starts(self):
+    def test_missing_fix_does_not_mark_start_ready(self):
         import tkinter as tk
         import gui
-        root = tk.Tk()
-        root.withdraw()
+        root = tk.Tk(); root.withdraw()
         app = gui.App(root)
         try:
             with tempfile.TemporaryDirectory() as tmp:
                 app.route_history_path = str(pathlib.Path(tmp) / "history.json")
                 app.client = Mock()
-                app.client.gps_status.return_value = {"enabled": True, "location": None, "satellites": None}
                 app.observer = Mock()
                 app.observer.read.return_value = "idle"
-                class ImmediateThread:
-                    def __init__(self, target, **kw): self.target = target
-                    def start(self): self.target()
-                with patch.object(gui.threading, "Thread", ImmediateThread):
-                    app._handle_screen("idle")
-                    app._handle_screen("idle")
-                while not app.msgq.empty():
-                    kind, payload = app.msgq.get_nowait()
-                    if kind == "prepared":
-                        app._finish_prepare(*payload)
-                route = app.prepared_route
-                self.assertIsNotNone(route)
-                app.client.set_wgs84.assert_called_once_with(*route.position_at(0))
-                with patch.object(gui.threading, "Thread") as thread, patch.object(app, "on_save", return_value=True):
-                    app._handle_screen("running")
-                    thread.assert_not_called()
-                    self.assertFalse(app.autolink.consumed)
-                    app.client.gps_status.return_value = {"enabled": True, "location": route.position_at(0), "satellites": 7}
-                    app._handle_screen("running")
-                    thread.return_value.start.assert_called_once()
-                app.client.set_wgs84.assert_called_once()
+                with patch.object(gui, "settle_start", side_effect=RuntimeError("GPS unavailable")), patch.object(gui.messagebox, "showerror"):
+                    app.on_prepare()
                 self.assertIsNone(app.prepared_route)
-                self.assertTrue(app.autolink.consumed)
+                with patch.object(app, "on_start") as start:
+                    app._handle_screen("running")
+                    start.assert_not_called()
         finally:
             root.destroy()
 

@@ -1,3 +1,4 @@
+from unittest.mock import Mock
 import json
 import math
 import pathlib
@@ -129,16 +130,20 @@ class RandomRouteTests(unittest.TestCase):
                     app.on_start()
                     self.assertTrue(error.called)
                     self.assertEqual(client.points, [])
-                app.on_prepare()
-                self.assertEqual(len(client.points), 1)
+                app.observer = Mock()
+                app.observer.read.return_value = "idle"
+                from lepao.location_guard import settle_start
+                with patch.object(gui, "settle_start", side_effect=lambda c,o,r,cancel: settle_start(c,o,r,cancel,sleep=lambda _: None)):
+                    app.on_prepare()
+                self.assertEqual(len(client.points), 2)
                 prepared = app.prepared_route
                 self.assertEqual(client.points[0], prepared.position_at(0))
                 app.on_check()
-                self.assertEqual(len(client.points), 1)
+                self.assertEqual(len(client.points), 2)
                 with patch.object(gui.threading, "Thread") as thread, patch.object(app, "on_save", return_value=True):
                     app.on_start()
                     thread.return_value.start.assert_called_once()
-                self.assertEqual(len(client.points), 1)  # No second random start / teleport.
+                self.assertEqual(len(client.points), 2)  # No second random start / teleport.
                 self.assertIsNone(app.prepared_route)
                 self.assertEqual(read_history(app.route_history_path)[-1]["status"], "started")
         finally:
