@@ -35,11 +35,21 @@ class AndroidCompatibilityTests(unittest.TestCase):
         client = self.client()
         client._adb_serial = '127.0.0.1:16000'
         client._adb = Mock(side_effect=[output(error="device '127.0.0.1:16000' not found", code=1),
-                                       output('connected'), output('35')])
+                                       output('disconnected'), output('connected'), output('35')])
         self.assertEqual(client.adb_shell('getprop', 'ro.build.version.sdk'), '35')
         client.manager.assert_called_once_with('info', '-v', '7')
-        self.assertEqual(client._adb.call_args_list[1].args, ('connect', '127.0.0.1:17000'))
-        self.assertEqual(client._adb.call_args_list[2].args[:2], ('-s', '127.0.0.1:17000'))
+        self.assertEqual(client._adb.call_args_list[1].args, ('disconnect', '127.0.0.1:17000'))
+        self.assertEqual(client._adb.call_args_list[2].args, ('connect', '127.0.0.1:17000'))
+        self.assertEqual(client._adb.call_args_list[3].args[:2], ('-s', '127.0.0.1:17000'))
+
+    def test_offline_transport_is_disconnected_before_connect(self):
+        client = self.client()
+        client._adb_serial = '127.0.0.1:17000'
+        client._adb = Mock(side_effect=[output(error='adb.exe: device offline', code=1),
+                                       output('disconnected'), output('connected'), output('1')])
+        self.assertEqual(client.adb_shell('getprop', 'sys.boot_completed'), '1')
+        self.assertEqual([c.args[:1] for c in client._adb.call_args_list],
+                         [('-s',), ('disconnect',), ('connect',), ('-s',)])
 
     def test_permission_failure_is_not_retried_or_redirected(self):
         client = self.client()

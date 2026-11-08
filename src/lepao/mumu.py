@@ -364,6 +364,9 @@ class MuMuGateway:
         error = (out.stderr or out.stdout).strip()
         if out.returncode and re.search(r"device .*not found|device offline|device not found|closed|cannot connect", error, re.I):
             self._resolve_adb_serial()
+            # 'connect' alone may say 'already connected' for an offline socket
+            # left by the previous boot. Replace only this instance's transport.
+            self._adb("disconnect", self._adb_serial)
             self._adb("connect", self._adb_serial)
             out = self._adb("-s", self._adb_serial, "shell", *args)
         if out.returncode:
