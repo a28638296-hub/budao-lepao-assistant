@@ -46,5 +46,6 @@ def restore_before_open(client, config, *, sleep=time.sleep, clock=time.monotoni
         error = haversine(*point, *target) if point else None
         matches = matches + 1 if gps.get("enabled") and error is not None and error < 3 else 0
         if matches >= 3:
-            return {"restored": True, "error_m": error}
+            return {"restored": True, "error_m": error,
+                    "correction": tuple(target[i] - point[i] for i in (0, 1))}
     raise RuntimeError("25 秒内未确认实际 GPS 回到保存的目标位置，暂不打开乐跑；请检查诊断组件定位权限")

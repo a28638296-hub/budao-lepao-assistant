@@ -46,6 +46,18 @@ class StadiumBand:
         t = min(self.straight, max(0.0, t))
         return math.dist(q, tuple(self.south[i] + t * self.up[i] for i in (0, 1)))
 
+    def phase_at(self, point):
+        """Nearest perimeter phase, used to continue from an observed inner fix."""
+        q = self.xy(point)
+        t = sum((q[i] - self.south[i]) * self.up[i] for i in (0, 1))
+        u = sum((q[i] - self.south[i]) * self.right[i] for i in (0, 1))
+        arc = math.pi * self.radius
+        if t < 0:
+            return self.straight + math.atan2(-t, u) * self.radius
+        if t > self.straight:
+            return 2*self.straight + arc + math.atan2(t-self.straight, -u)*self.radius
+        return self.straight-t if u >= 0 else self.straight+arc+t
+
     def require_point(self, p):
         d = self.radial_distance(p)
         if not math.isfinite(d) or not self.inner <= d <= self.outer:

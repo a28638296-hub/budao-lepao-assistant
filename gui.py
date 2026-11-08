@@ -7,6 +7,7 @@ import queue
 import sys
 import threading
 import time
+import subprocess
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -32,6 +33,7 @@ from lepao.location_guard import IdleLocationGuard, confirmed_start, settle_star
 HERE = APP_DIR
 CFG_PATH = os.path.join(HERE, "config.json")
 _MUTEX = None
+STARTUP_POSITION_CORRECTION = (0.0, 0.0)
 
 def _appdata_dir():
     base = os.environ.get("APPDATA") or os.path.expanduser("~")
@@ -119,6 +121,7 @@ class App:
         self.auto_retry_at = 0.0
         self.last_screen = None
         self.last_confirmed_at = time.monotonic()
+        self.last_idle_at = float("-inf")
         self.route_history_path = os.path.join(_appdata_dir(), "route_history.json")
         self._build()
         self.root.after(120, self._drain)
@@ -272,10 +275,17 @@ class App:
                                              vm_index=self.disc.get("vm_index", 0),
                                              manager_path=self.disc.get("manager"),
                                              adb_path=self.disc.get("adb"))
+            self.client.position_correction = STARTUP_POSITION_CORRECTION
         return self.client
 
     def _log(self, msg):
-        self.msgq.put(("log", "[%s] %s" % (time.strftime("%H:%M:%S"), msg)))
+        line = "[%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S"), msg)
+        self.msgq.put(("log", line))
+        try:
+            with open(os.path.join(_appdata_dir(), "assistant.log"), "a", encoding="utf-8") as log:
+                log.write(line + "\n")
+        except OSError:
+            pass
 
     def _drain(self):
         try:
@@ -287,9 +297,11 @@ class App:
                 elif kind == "progress":
                     self.pb["value"] = payload
                 elif kind == "screen":
-                    self._handle_screen(*payload)
-                    if not self.closing.is_set():
-                        self.root.after(1000, self._poll_screen)
+                    try:
+                        self._handle_screen(*payload)
+                    finally:
+                        if not self.closing.is_set():
+                            self.root.after(1000, self._poll_screen)
                 elif kind == "prepared":
                     self._finish_prepare(*payload)
                 elif kind == "done":
@@ -297,10 +309,12 @@ class App:
                     self.btn_prepare["state"] = "normal"
                     self.btn_stop["state"] = "disabled"
                     self.pb["value"] = 0
-                    self.route_status.set("本次已停止；请在乐跑结束记录，返回首页后将自动准备下次起点" if self.auto_watch else
-                                          "本次已停止；先在乐跑结束记录，下次重新准备随机起点")
+                    self.route_status.set("已停止：" + payload if payload else
+                                          "本次已停止；请在乐跑结束记录，返回首页后将自动准备下次起点")
         except queue.Empty:
             pass
+        except Exception as exc:
+            self._log("界面处理异常（将继续监听）：" + str(exc))
         self.root.after(150, self._drain)
 
     def _get_observer(self):
@@ -336,6 +350,8 @@ class App:
         if self.auto_watch and not self.var_auto_enabled.get():
             return
         busy = bool(self.worker and self.worker.is_alive())
+        if state == "idle":
+            self.last_idle_at = time.monotonic()
         if state in ("running", "paused", "idle"):
             self.last_confirmed_at = time.monotonic()
         if state != self.last_screen:
@@ -365,9 +381,36 @@ class App:
         elif action == "stop":
             self.on_stop()
         elif state == "running" and not busy and not self.preparing and not self.autolink.consumed:
-            self.route_status.set("此记录开始前尚未准备起点；请结束记录并返回首页，等待自动准备")
+            if time.monotonic() - self.last_idle_at < 60 and self.prepared_route is None:
+                self._recover_start_from_fix()
+            else:
+                self.route_status.set("此记录开始前尚未准备起点；请结束记录并返回首页，等待自动准备")
         elif error and not busy and not self.preparing:
             self.route_status.set("等待模拟器连接：" + error[:100])
+
+    def _recover_start_from_fix(self):
+        """Fast taps may precede preparation. Build from the current fix, never teleport."""
+        try:
+            from lepao.location_guard import require_inner_fix
+            points = self.read_points()
+            cfg = self.build_cfg(points)
+            band = StadiumBand(cfg.track_band_anchors_wgs84)
+            gps = self.get_client().gps_status()
+            require_inner_fix(gps, band)
+            plan = make_plan(band, cfg.laps)
+            plan["start_phase_m"] = band.phase_at(gps["location"])
+            route = PreparedRoute(band, plan)
+            plan["start"] = list(route.position_at(0))
+            if not confirmed_start(gps, route):
+                raise RuntimeError("当前位置尚未确认在可衔接的内圈起点")
+            if self._get_observer().read() != "running":
+                return
+            save_plan(self.route_history_path, plan, "prepared_from_current_fix")
+            self.prepared_route, self.prepared_key = route, (points, cfg.laps)
+            self._log("开始时准备尚未完成，已从当前内圈 GPS 位置衔接；未重新下发随机起点")
+            self.on_start(automatic=True)
+        except (ValueError, OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
+            self.route_status.set("等待当前 GPS 通过内圈校验：" + str(exc))
 
     def read_anchors(self):
         kind = SYS_OPTIONS[self.csys.get()]
@@ -547,6 +590,7 @@ class App:
         observer = self._get_observer()
 
         def prepare():
+            dispatched = False
             try:
                 band = StadiumBand(cfg.track_band_anchors_wgs84)
                 RunSimulator(Track(points, corner_radius_m=0), None, cfg, logger=lambda _: None)
@@ -562,12 +606,25 @@ class App:
                     raise RuntimeError("乐跑已离开待跑首页，取消移动起点；返回首页后自动重试")
                 cli.address = "南宁学院田径场－本次随机起点"
                 cli.set_wgs84(*route.position_at(0))
+                dispatched = True
                 # Do not toggle GPS here: some App builds drop their listener
                 # when the switch is cycled and never request another fix.
                 gps = settle_start(cli, observer, route, self.closing.is_set)
                 save_plan(self.route_history_path, plan, "prepared")
                 return route, (points, cfg.laps), gps, None, automatic
             except Exception as exc:
+                # Keep the already-dispatched candidate across countdown/running.
+                # Only on_start's read-back check may authorize motion; never send
+                # a new start or apply calibration while a record is active.
+                if automatic and dispatched and not self.closing.is_set():
+                    try:
+                        if observer.read() in ("running", "paused", "unknown"):
+                            gps = cli.gps_status()
+                            save_plan(self.route_history_path, plan, "awaiting_start_fix")
+                            self._log("开始信号出现在校正期间，保留已下发起点并继续校验 GPS")
+                            return route, (points, cfg.laps), gps, None, automatic
+                    except Exception:
+                        pass
                 return None, None, None, exc, automatic
 
         if automatic:
@@ -659,8 +716,9 @@ class App:
                     return
                 raise ValueError("实际 GPS 尚未确认在内圈起点，请回首页恢复定位")
             save_plan(self.route_history_path, track.plan, "started")
-        except (ValueError, OSError, RuntimeError) as exc:
+        except (ValueError, OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
             if automatic:
+                self.autolink.consumed = False
                 self.route_status.set("自动启动失败：" + str(exc))
                 self._log("自动启动失败：" + str(exc))
             else:
@@ -685,6 +743,7 @@ class App:
 
         def work():
             route_status = "failed"
+            failure = None
             try:
                 cli = self.get_client()
                 sim = RunSimulator(track, cli, cfg, logger=self._log)
@@ -701,13 +760,15 @@ class App:
                 sim.run(stop_flag=stop_flag, pause_flag=self.pause_flag.is_set)
                 route_status = "stopped" if self.stop_flag.is_set() else "finished"
             except Exception as exc:  # noqa: BLE001
+                failure = str(exc)
+                track.plan["failure_reason"] = failure
                 self._log("运行出错：%s" % exc)
             finally:
                 try:
                     save_plan(self.route_history_path, track.plan, route_status)
                 except Exception as exc:
                     self._log("路线历史更新失败：%s" % exc)
-                self.msgq.put(("done", None))
+                self.msgq.put(("done", failure))
 
         self.worker = threading.Thread(target=work, daemon=True)
         self.worker.start()

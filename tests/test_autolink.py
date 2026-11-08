@@ -155,6 +155,55 @@ class AutoLinkTests(unittest.TestCase):
         finally:
             root.destroy()
 
+    def test_fast_start_keeps_dispatched_candidate(self):
+        import tkinter as tk
+        import gui
+        root = tk.Tk(); root.withdraw()
+        app = gui.App(root)
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                app.route_history_path = str(pathlib.Path(tmp) / "history.json")
+                app.client = Mock(); app.observer = Mock()
+                app.observer.read.side_effect = ["idle", "running"]
+                app.client.gps_status.side_effect = lambda: {"enabled": True, "location": app.client.set_wgs84.call_args.args}
+                class ImmediateThread:
+                    def __init__(self, target, **kw): self.target = target
+                    def start(self): self.target()
+                with patch.object(gui.threading, "Thread", ImmediateThread), patch.object(gui, "settle_start", side_effect=RuntimeError("record started")):
+                    app.on_prepare(automatic=True)
+                while not app.msgq.empty():
+                    kind, value = app.msgq.get_nowait()
+                    if kind == "prepared": app._finish_prepare(*value)
+                self.assertIsNotNone(app.prepared_route)
+                app.client.set_wgs84.assert_called_once()
+                with patch.object(app, "on_start") as start:
+                    app._handle_screen("running")
+                    start.assert_called_once_with(automatic=True)
+        finally:
+            root.destroy()
+
+    def test_fast_start_before_preparation_uses_current_fix_without_relocation(self):
+        import tkinter as tk
+        import gui, time
+        from lepao.routes import StadiumBand
+        root = tk.Tk(); root.withdraw()
+        app = gui.App(root)
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                app.route_history_path = str(pathlib.Path(tmp) / "history.json")
+                app.client = Mock(); app.observer = Mock()
+                app.observer.read.return_value = "running"
+                band = StadiumBand(app.read_anchors())
+                app.client.gps_status.return_value = {"enabled": True, "location": band.point(100, -1)}
+                app.last_idle_at = time.monotonic()
+                with patch.object(app, "on_start") as start:
+                    app._handle_screen("running")
+                    start.assert_called_once_with(automatic=True)
+                app.client.set_wgs84.assert_not_called()
+                self.assertIsNotNone(app.prepared_route)
+        finally:
+            root.destroy()
+
     def test_paused_simulator_does_not_send_locations_or_catch_up(self):
         from lepao.sim import RunConfig, RunSimulator
         from lepao.track import Track

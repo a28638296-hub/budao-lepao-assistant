@@ -121,6 +121,7 @@ def open_target(settings):
             config = json.loads(Path(path).read_text(encoding="utf-8"))
             break
     report = restore_before_open(client, config)
+    gui.STARTUP_POSITION_CORRECTION = report.get("correction", (0.0, 0.0))
     if report.get("active_record"):
         return
     result = client.adb_shell("am", "start", "-W", "-n", "com.lptiyu.tanke/.activities.splash.SplashActivity")
