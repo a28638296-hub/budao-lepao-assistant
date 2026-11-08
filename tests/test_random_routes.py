@@ -61,14 +61,14 @@ class RandomRouteTests(unittest.TestCase):
                 self.assertLess(haversine(*a, *b), 1.1)
                 self.band.require_segment(a, b)
                 offset = self.band.radial_distance(a) - self.band.radius
-                self.assertGreaterEqual(offset, -1.86)
-                self.assertLessEqual(offset, -0.59)
+                self.assertGreaterEqual(offset, -1.31)
+                self.assertLessEqual(offset, -0.69)
             # At the same position around the oval, successive laps have distinct radii.
             for phase in range(0, 360, 15):
                 d = self.band.perimeter * phase / 360
                 offsets = [route_offset(plan, d, (i + phase / 360) / 5.6, self.band.perimeter)
                            for i in range(5)]
-                self.assertTrue(all(abs(b - a) > 0.15 for a, b in zip(offsets, offsets[1:])))
+                self.assertTrue(all(abs(b - a) > 0.07 for a, b in zip(offsets, offsets[1:])))
 
     def test_inner_grass_and_shortcut_are_rejected(self):
         middle = self.band.location(tuple((a + b) / 2 for a, b in zip(self.band.north, self.band.south)))
@@ -80,6 +80,19 @@ class RandomRouteTests(unittest.TestCase):
         self.band.require_point(b)
         with self.assertRaisesRegex(ValueError, "草坪"):
             self.band.require_segment(a, b)
+
+    def test_later_laps_tolerate_small_readback_residual_without_widening_band(self):
+        from lepao.location_guard import require_inner_fix
+        from lepao.geo import offset_meters
+        # Exercise the entire run, including inward drift on its last laps.
+        for seed in range(8):
+            route = PreparedRoute(self.band, make_plan(self.band, 5, rng=random.Random(seed)))
+            for point in route.path[::5]:
+                for angle in range(0, 360, 45):
+                    a = math.radians(angle)
+                    shifted = offset_meters(*point, 0.6 * math.cos(a), 0.6 * math.sin(a))
+                    rounded = tuple(round(v, 6) for v in shifted)
+                    require_inner_fix({"enabled": True, "location": rounded}, self.band)
 
     def test_full_prepared_run_uses_total_length_once(self):
         from unittest.mock import patch

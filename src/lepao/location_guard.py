@@ -8,8 +8,11 @@ def require_inner_fix(gps, band):
     point = gps.get("location")
     if not gps.get("enabled") or not point:
         raise RuntimeError("实际 GPS 不可用，停止移动；返回首页重新准备")
-    if not band.inner <= band.radial_distance(point) <= band.radius:
-        raise RuntimeError("实际 GPS 离开内圈跑道，停止移动；返回首页重新定位")
+    radial = band.radial_distance(point)
+    if not band.inner <= radial <= band.radius:
+        raise RuntimeError("实际 GPS 离开内圈跑道，停止移动；返回首页重新定位"
+                           "（相对参考线 %.3f 米，允许 %.3f～0 米）" %
+                           (radial - band.radius, band.inner - band.radius))
 
 
 def confirmed_start(gps, route):

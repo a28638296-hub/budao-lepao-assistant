@@ -328,6 +328,7 @@ class App:
         if not self.var_auto_enabled.get():
             if self.worker and self.worker.is_alive():
                 self.on_stop()
+            self.route_status.set("自动联动未开启：核对坐标后勾选“启用自动联动”，点“保存默认”记住设置")
             self.root.after(1000, self._poll_screen)
             return
         observer = self._get_observer()

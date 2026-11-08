@@ -151,7 +151,9 @@ def make_plan(band, laps, history=(), rng=None):
     separated = [c for c in choices if c[0] >= 20]
     phase = rng.choice(separated)[1] if separated else max(choices)[1]
     # Entire generated route stays inside the reference oval, including waves.
-    lo, hi = rng.uniform(-1.75, -1.65), rng.uniform(-0.8, -0.7)
+    # Leave >= 0.7 m on BOTH sides for conversion/rounded GPS read-back
+    # residuals. Drifting toward -1.85 m can pass lap one then stop later.
+    lo, hi = rng.uniform(-1.25, -1.20), rng.uniform(-0.80, -0.75)
     if rng.choice((True, False)):
         lo, hi = hi, lo
     plan = dict(id=uuid.uuid4().hex, created_at=time.time(), laps=laps, start_phase_m=phase,
@@ -166,8 +168,8 @@ def route_offset(plan, phase, progress, perimeter):
     # The same small wave repeats each lap; a monotone radial drift separates laps.
     theta = 2 * math.pi * phase / perimeter
     return (plan["offset_start_m"] + (plan["offset_end_m"] - plan["offset_start_m"]) * progress
-            + 0.06 * math.sin(2 * theta + plan["wave_phase"])
-            + 0.04 * math.sin(3 * theta + plan["wave_phase2"]))
+            + 0.03 * math.sin(2 * theta + plan["wave_phase"])
+            + 0.02 * math.sin(3 * theta + plan["wave_phase2"]))
 
 
 class PreparedRoute(Track):
