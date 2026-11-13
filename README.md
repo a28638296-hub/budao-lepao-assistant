@@ -1,5 +1,7 @@
 # 步道乐跑
 
+> **2026-11-13 App 更新提示：** MuMu Android 12 上已复现 App 4.3.3 启动闪退；保留数据回退至 4.2.6 后恢复。见 [恢复步骤与限制](docs/APP_UPDATE_RECOVERY.md)。这是回退方案，不代表 4.3.3 已适配；Windows 助手仍为 v2.3.0。
+
 > 最新版本：v2.3.0。Windows 下载包包含定位、冷启动联动及固定配置目录修复。完整解压即可运行，无需安装 Python；首次仍需完成实例选择、本人登录、权限与跑道配置。
 
 面向步道乐跑的非官方 Windows + MuMu 模拟器定位与步数测试工具，提供自动联动、跑道轨迹模拟、中文安装教程和免 Python 的 Windows 下载包。基于 [EdmundMad0309/budao-lepao-runner](https://github.com/EdmundMad0309/budao-lepao-runner) 修改，按 MIT 许可证开源。

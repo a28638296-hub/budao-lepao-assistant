@@ -1,5 +1,7 @@
 # Android 12：从下载到首次检查的详细安装教程
 
+> App 升级到 4.3.3 后打不开时，先看 [Android 12 保留数据回退说明](APP_UPDATE_RECOVERY.md)。不要直接卸载或清除数据。
+
 > v2.3.0 Windows ZIP 已包含本次全部修复，无需 Python。完整解压、完成首次配置后，从助手打开并在乐跑开始记录即可自动联动。
 
 适用版本：v2.3.0。本教程只介绍 MuMu Android 12 的安装与配置。助手运行在 Windows 电脑上，通过 MuMu 控制所选 Android 实例。不能把 Windows EXE 安装到安卓手机中。
