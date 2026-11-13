@@ -1,0 +1,23 @@
+{
+  "checked_on": "2026-11-13",
+  "environment": {
+    "emulator": "MuMu",
+    "android": "12",
+    "renderer": "DirectX",
+    "app_abi": "arm64-v8a"
+  },
+  "store_reference": "https://sj.qq.com/appdetail/com.lptiyu.tanke",
+  "app_version": "4.3.3",
+  "version_code": 233,
+  "apk_sha256": "72a93d55f0e7731263e6b4f844f6fae67628a9859234c7f02e185260893e2f73",
+  "apk_source": "original in-app update package retained before rollback",
+  "installation": "success",
+  "launch": "failed: returns to launcher after a few seconds",
+  "crash": {
+    "signal": "SIGSEGV",
+    "library": "libdexfile.so"
+  },
+  "login_and_run_validation": "not performed: app crashes before opening",
+  "assistant_version": "2.3.0",
+  "assistant_binary_changed": false
+}
