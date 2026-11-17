@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-17",
+  "app_package": "com.lptiyu.tanke",
+  "app_version": "4.3.1",
+  "version_code": 231,
+  "download_url": "https://imtt2.dd.qq.com/sjy.10001/sjy.00004/16891/apk/9463D5F0222DC2D16C33B4C96BD03A51.apk",
+  "apk_bytes": 183846804,
+  "apk_sha256": "48f0b9a90e3844db2fec8e11ec7d7ee836fa5338d12917e7c85023c259a68c5b",
+  "apk_md5": "9463d5f0222dc2d16c33b4c96bd03a51",
+  "signer_certificate_sha256": "a6af18d3f047f3a210e9762f41b6f923f445151625fb5533c41748c7b02a6a24",
+  "android_package_manager_install_verified": true,
+  "environment": {
+    "mumu_host": "6.8.11.0",
+    "android": "12",
+    "android_api": 32,
+    "renderer": "DirectX",
+    "installed_primary_cpu_abi": "arm64-v8a"
+  },
+  "validation": {
+    "clean_instance_homepage_and_login_page": "passed",
+    "clean_instance_cold_starts": 3,
+    "preserve_data_install_4_3_3_to_4_3_1": "passed",
+    "original_instance_full_offline_backup": "sha256 verified",
+    "original_app_data_cleared": false,
+    "original_app_uninstalled": false,
+    "original_application_uid_preserved": true,
+    "wechat_reauthentication": "completed by user",
+    "account_history_visible_after_login": true,
+    "desktop_shortcut_emulator_cold_start": "passed",
+    "login_retained_after_emulator_restart": true,
+    "distance_growth_and_checkpoint_ui": "observed",
+    "native_app_crash_in_verified_restart": false
+  },
+  "limits": {
+    "full_run_completion": "not verified",
+    "record_upload": "not verified",
+    "server_acceptance": "not verified",
+    "app_4_3_1_on_android15": "not tested",
+    "app_4_3_3_on_android12_and_15": "startup failed",
+    "app_4_2_6": "minimum version restriction observed"
+  },
+  "privacy": "No account identifiers, school, device identifiers, local paths, raw logs, screenshots or backups are included."
+}

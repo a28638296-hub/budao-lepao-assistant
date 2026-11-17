@@ -146,7 +146,7 @@ class App:
     # ---------- UI ----------
     def _build(self):
         r = self.root
-        r.title("步道乐跑 · 社区版 v2.3.0")
+        r.title("步道乐跑 · 社区版 v2.3.1")
         width = min(760, r.winfo_screenwidth() - 60)
         height = min(900, r.winfo_screenheight() - 100)
         r.geometry("%dx%d+20+20" % (width, height))

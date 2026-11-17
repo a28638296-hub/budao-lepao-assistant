@@ -5,7 +5,7 @@ from pathlib import Path
 import zipfile
 
 ROOT = Path(__file__).resolve().parent
-VERSION = "2.3.0"
+VERSION = "2.3.1"
 
 
 def main():
@@ -17,7 +17,8 @@ def main():
     files = [ROOT / name for name in (
         "README.md", "CHANGELOG.md", "LICENSE", "NOTICE.md", "config.example.json")]
     files += sorted((ROOT / "docs").glob("*.md"))
-    files += [ROOT / "docs/compatibility-results.json"]
+    files += [ROOT / "docs" / name for name in (
+        "compatibility-results.json", "app-4.3.3-retest.json", "app-4.3.1-recovery.json")]
     files += sorted((ROOT / "licenses").glob("*.txt"))
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
         z.write(ROOT / "dist/LePaoRunner.exe", "LePaoRunner.exe")
@@ -25,9 +26,10 @@ def main():
             z.write(path, path.relative_to(ROOT).as_posix())
         z.writestr("portable-mode.txt", "Keep this file beside LePaoRunner.exe. Settings are stored in user-data.\n")
         z.writestr("开始使用.txt", (
-            "步道乐跑 v2.3.0 — Windows 64 位版，无需安装 Python\n\n"
+            "步道乐跑助手 v2.3.1 — Windows 64 位版，无需安装 Python\n\n"
             "1. 完整解压 ZIP 到可写文件夹，保留 portable-mode.txt。\n"
-            "2. 在 MuMu 创建/选择 Android 12 实例。安装并本人登录步道乐跑 4.2.6；微信登录需要同实例安装微信。\n"
+            "2. 在 MuMu 创建/选择 Android 12 实例。按 docs/INSTALL.md 下载并校验官方步道乐跑 4.3.1；微信登录需要同实例安装微信。\n"
+            "   已有账号且 App 闪退：先读 docs/APP_UPDATE_RECOVERY.md，备份完整实例后保留数据安装，不要卸载或清除数据。\n"
             "3. 按 docs/INSTALL.md 安装指定 GPSTest 组件，打开位置开关并授予精确位置权限。\n"
             "4. 双击 LePaoRunner.exe，选择 MuMu 安装根目录，查询并选择 Android 12 实例编号。\n"
             "5. 核对六点坐标和坐标系，勾选启用自动联动，点击保存默认。示例坐标不能直接用于其他场地。\n"
@@ -37,6 +39,7 @@ def main():
             "重新选择实例：在程序目录 PowerShell 执行 .\\LePaoRunner.exe --setup\n"
             "详细教程：https://github.com/a28638296-hub/budao-lepao-assistant/blob/main/docs/INSTALL.md\n"
             "下载包不含第三方 APK、账号或个人配置。使用前核对 SHA256SUMS.txt。\n"
+            "当前已验证 Android 12 + App 4.3.1；4.3.3 在已测环境闪退，4.2.6 已提示版本过低。4.3.1 在 Android 15 尚未验证。\n"
         ))
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     (args.output / "SHA256SUMS.txt").write_text(f"{digest}  {archive.name}\n", encoding="ascii")

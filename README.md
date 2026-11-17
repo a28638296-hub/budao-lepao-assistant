@@ -1,18 +1,20 @@
 # 步道乐跑
 
-> **2026-11-13 App 更新提示：** MuMu Android 12 上已复现 App 4.3.3 启动闪退；保留数据回退至 4.2.6 后恢复。再次覆盖升级复测仍闪退，4.3.3 尚不可在该环境正常使用。见 [恢复步骤与限制](docs/APP_UPDATE_RECOVERY.md)。这是回退方案，不代表 4.3.3 已适配；Windows 助手仍为 v2.3.0。
+> **2026-11-17 恢复结果：** 官方 App **4.3.1** 在 MuMu Android 12 已验证正常打开、本人微信登录、桌面入口冷启动，以及计时、距离增长和打卡。4.3.3 在已测 Android 12 / 15 环境仍闪退；4.2.6 已提示版本过低，不再作为当前恢复方案。见 [官方安装包、校验值与保留数据步骤](docs/APP_UPDATE_RECOVERY.md)。完整结束、上传和成绩有效性未验证。
 
-> 最新版本：v2.3.0。Windows 下载包包含定位、冷启动联动及固定配置目录修复。完整解压即可运行，无需安装 Python；首次仍需完成实例选择、本人登录、权限与跑道配置。
+> 最新助手版本：v2.3.1。下载包更新 4.3.1 安装教程，加入 App 持续运行检查及启动结束后的 GPS 诊断页清理。完整解压即可运行，无需安装 Python；首次仍需完成实例选择、本人登录、权限与跑道配置。助手版本与 App 版本不同。
 
 面向步道乐跑的非官方 Windows + MuMu 模拟器定位与步数测试工具，提供自动联动、跑道轨迹模拟、中文安装教程和免 Python 的 Windows 下载包。基于 [EdmundMad0309/budao-lepao-runner](https://github.com/EdmundMad0309/budao-lepao-runner) 修改，按 MIT 许可证开源。
 
-**Windows 下载：** [LePaoRunner-v2.3.0-windows-x64.zip](https://github.com/a28638296-hub/budao-lepao-assistant/releases/download/v2.3.0/LePaoRunner-v2.3.0-windows-x64.zip) · [发行说明与 SHA256](https://github.com/a28638296-hub/budao-lepao-assistant/releases/tag/v2.3.0)。绿色 Code → Download ZIP 是源码，不是可执行程序。
+**Windows 下载：** [LePaoRunner-v2.3.1-windows-x64.zip](https://github.com/a28638296-hub/budao-lepao-assistant/releases/download/v2.3.1/LePaoRunner-v2.3.1-windows-x64.zip) · [发行说明与 SHA256](https://github.com/a28638296-hub/budao-lepao-assistant/releases/tag/v2.3.1)。绿色 Code → Download ZIP 是源码，不是可执行程序。
+
+**步道乐跑 App：** [腾讯官方 CDN 的 4.3.1 历史安装包](https://imtt2.dd.qq.com/sjy.10001/sjy.00004/16891/apk/9463D5F0222DC2D16C33B4C96BD03A51.apk)。先按 [校验与安装说明](docs/APP_UPDATE_RECOVERY.md) 核对文件；已有账号的实例应先备份，再保留数据安装。第三方 APK 不随 Windows ZIP 分发。
 
 > 生成的是模拟运动数据，并不代表真实跑步。用于获得授权的开发、演示与定位测试；请勿提交虚假考勤或成绩。安装包不包含第三方 App，不代替本人登录，也不保证记录被服务端认定有效。
 
 ## 安装与首次使用
 
-### v2.3.0：重新打开与自动联动
+### v2.3.1：重新打开与自动联动
 
 新版启动器会先启动所选实例，等待 Android 完成启动，再使用保存的六点恢复位置。它短暂打开 GPSTest 请求 GPS，连续三次确认 Android 实际位置与目标相距小于 0.35 米且在内圈后才打开乐跑；超时会报错，不会把下发成功当成定位成功。已有跑步服务运行时保留现有记录和位置。首次尚未保存坐标时进入普通设置流程，不承诺定位已经恢复。
 
@@ -29,14 +31,14 @@
 1. 使用 Windows 10/11 64 位电脑。
 2. 从 [MuMu 官网](https://mumu.163.com/) 安装模拟器，确认开启 CPU 虚拟化。
 3. 在 MuMu 多开器中创建并启动 **Android 12** 实例。本教程仅按 Android 12 编写；后续安装 App、微信和选择助手实例时均使用这个实例，不需要启动更高版本实例。
-4. 从官方渠道安装步道乐跑，使用本人账号完成登录。本版自动页面识别适配 **4.2.6**；其他版本的按钮和页面结构可能不同。本仓库不分发 APK，也不提供第三方破解包。
+4. 按上述说明安装已核验的官方 **4.3.1**，使用本人账号完成登录。已验证该版本在 Android 12 的启动与运行页面识别；其他版本不能仅凭版本号推定兼容。已有 4.3.3 的用户先阅读保留数据恢复步骤，不要卸载 App。
 5. 在 Android 设置中开启“位置”，授予 App 精确位置权限；需要后台记录时允许相应后台权限并取消电池限制。进入乐跑首页，先结束此前未完成的记录。
 
 ### 2. 下载助手
 
 1. 打开上面的最新版发行页，下载 Windows ZIP 和 `SHA256SUMS.txt`。
 2. 将 ZIP **完整解压**到可写目录，如 `D:\Apps\LePaoRunner`；不要直接在压缩包里双击程序。
-3. 可在 PowerShell 执行 `Get-FileHash .\LePaoRunner-v2.3.0-windows-x64.zip -Algorithm SHA256`，与发行页校验文件核对。
+3. 可在 PowerShell 执行 `Get-FileHash .\LePaoRunner-v2.3.1-windows-x64.zip -Algorithm SHA256`，与发行页校验文件核对。
 4. 保留 ZIP 自带的 `portable-mode.txt`。配置统一保存在程序旁的 `user-data`；不要只复制 EXE 或把程序放在不可写目录。
 5. 双击 `LePaoRunner.exe`。EXE 未购买代码签名证书，Windows 可能提示未知发布者；先核对下载来源和校验值，不要关闭杀毒软件。
 
@@ -79,7 +81,7 @@
 
 ## 数据存放
 
-本地设置在 `%APPDATA%\LePaoRunnerCommunity\`：`launcher.json` 保存模拟器选择，`config.json` 保存界面设置，`route_history.json` 保存生成路线历史。EXE 目录可能同步生成 `config.json`。不要把这些文件提交到公开仓库。
+Windows ZIP 默认使用程序旁的 `user-data`：`launcher.json` 保存模拟器选择，`config.json` 保存界面设置，`route_history.json` 保存生成路线历史。未启用 `portable-mode.txt` 的源码运行使用 `%APPDATA%\LePaoRunnerCommunity\`。这些是助手设置，不能代替模拟器内 App 账号数据的备份；不要提交到公开仓库。
 
 程序不需要 GitHub 密码或 App 账号密码。登录与授权由本人在 App 中完成。它不会上传路线历史到本项目；模拟器中的 App 自身网络行为另当别论。
 
@@ -119,13 +121,13 @@ python -m venv .venv
 
 | 系统 | 当前验证范围 |
 |---|---|
-| Android 12（本地 API 32） | ADB、位置开关与 GPS 刷新、App 首页识别；此前跑步/暂停控件结构回归 |
-| Android 15（本地 API 35） | ADB 自动连接、位置开关与 GPS 刷新、App 启动、界面 XML 读取；实例未登录，未验证真实记录 |
+| Android 12（本地 API 32） | 2026-11-17：官方 App 4.3.1 启动、微信登录、桌面冷启动、运行页面识别和短程距离增长通过；4.3.3 启动失败 |
+| Android 15（本地 API 35） | 此前以 4.2.6 检查过设备接口与界面读取；2026-11-17 的 4.3.3 启动失败，4.3.1 尚未测试，不承诺完整可用 |
 | Android 13 / 14 / 16 及更新版本 | 没有版本白名单限制，使用相同能力检测；本地缺少对应镜像，未实机验证 |
 
 - v2.2.1 修复了切换实例后 ADB 未连接、ADB 路径写死系统版本，以及部分 Android 15 镜像界面 XML 已写出但读取工具退出报错的问题；兼容完整 Activity 类名与不同生命周期字段格式。
 - 点击“自检”可读取实际 Android/API、CPU 架构、App 版本和位置开关。自检不会移动坐标或创建运动记录。能读到设备信息不等于 App 的登录、记录或服务端校验一定兼容。
-- 验证包含方向几何、环带/连线边界、随机配速、分圈间距、GPS 检查、自动联动状态机，以及从 4.2.6 现场采集的按钮结构回归。
+- 验证包含方向几何、环带/连线边界、随机配速、分圈间距、GPS 检查、自动联动状态机、历史 4.2.6 按钮结构回归，以及本次 4.3.1 的启动和短程运行观察。详见 [脱敏恢复结果](docs/app-4.3.1-recovery.json)。
 - 页面检测修复已由现场结构确认；并未完成所有电脑、App 版本上的真实记录端到端验证，不承诺通用兼容或成绩有效。
 - 地图线条有宽度，GPS 与坐标转换有误差；生成点分开，不代表地图显示绝不重叠。圈数越多，有限宽度内每圈间距越小。
 - 草坪保护依赖你填写的六点与几何模型，无法识别现实道路、围栏或学校实际边界。

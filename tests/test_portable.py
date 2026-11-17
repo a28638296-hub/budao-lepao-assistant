@@ -1,13 +1,34 @@
 import pathlib
 import sys
+import tempfile
 import tkinter as tk
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 import gui
 
 
 class PortableTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        base = pathlib.Path(temporary.name)
+        app_dir = base / "app"
+        app_dir.mkdir()
+        # Fresh-install assertions must never read the developer's saved
+        # coordinate confirmation or write test logs beside their launcher.
+        patches = (
+            patch.object(gui, "HERE", str(app_dir)),
+            patch.dict("os.environ", {"APPDATA": str(base / "roaming")}),
+            patch.object(gui, "discover_mumu", return_value={}),
+            patch.object(gui, "MuMuLocationClient",
+                         side_effect=AssertionError("Portable tests must not connect to MuMu")),
+        )
+        for mocked in patches:
+            mocked.start()
+            self.addCleanup(mocked.stop)
+
     def test_custom_coordinates_update_route_and_boundary_together(self):
         root = tk.Tk()
         root.withdraw()

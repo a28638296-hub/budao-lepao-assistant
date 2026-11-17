@@ -13,6 +13,7 @@ from tkinter import ttk, filedialog, messagebox
 import gui
 from lepao.mumu import discover_mumu, MuMuLocationClient
 from lepao.startup_location import restore_before_open
+from lepao.app_health import verify_started
 
 SETTINGS = Path(gui._appdata_dir()) / "launcher.json"
 
@@ -79,7 +80,7 @@ def main():
         output = Path(sys.argv[sys.argv.index("--smoke-test") + 1])
         output.write_text(json.dumps({"ok": True, "route_points": len(route.path),
                                      "direction": route.plan["direction"], "device_mutations": 0,
-                                     "data_dir": gui._appdata_dir(), "version": "2.3.0"}), encoding="utf-8")
+                                     "data_dir": gui._appdata_dir(), "version": "2.3.1"}), encoding="utf-8")
         root.destroy()
         return
     if not gui.acquire_single_instance():
@@ -94,7 +95,7 @@ def main():
     os.environ["MUMU_HOME"] = settings["root"]
     os.environ["MUMU_VM_INDEX"] = str(settings["index"])
     root = tk.Tk()
-    root.title("步道乐跑 v2.3.0 · 正在启动")
+    root.title("步道乐跑 v2.3.1 · 正在启动")
     root.geometry("620x190")
     status = tk.StringVar(value="正在连接所选 MuMu 实例…")
     ttk.Label(root, textvariable=status, wraplength=580).pack(padx=20, pady=20)
@@ -182,16 +183,28 @@ def open_target(settings, progress=lambda message: None):
             config = json.loads(Path(path).read_text(encoding="utf-8"))
             break
     progress("正在读取并校正实际 GPS；可能暂时显示 GPSTest…")
-    report = restore_before_open(client, config)
-    gui.STARTUP_POSITION_CORRECTION = report.get("correction", (0.0, 0.0))
-    if report.get("restored"):
-        gui.STARTUP_VERIFIED_AT = time.monotonic()
-    if report.get("active_record"):
-        return
-    progress("正在打开步道乐跑…")
-    result = client.adb_shell("am", "start", "-W", "-n", "com.lptiyu.tanke/.activities.splash.SplashActivity")
-    if "Error" in result or "Status: ok" not in result:
-        raise RuntimeError("乐跑未成功打开：" + result)
+    close_diagnostic = True
+    try:
+        report = restore_before_open(client, config)
+        gui.STARTUP_POSITION_CORRECTION = report.get("correction", (0.0, 0.0))
+        if report.get("restored"):
+            gui.STARTUP_VERIFIED_AT = time.monotonic()
+        if report.get("active_record"):
+            close_diagnostic = False
+            return
+        progress("正在打开步道乐跑…")
+        result = client.adb_shell("am", "start", "-W", "-n", "com.lptiyu.tanke/.activities.splash.SplashActivity")
+        if "Error" in result or "Status: ok" not in result:
+            raise RuntimeError("乐跑未成功打开：" + result)
+        progress("正在确认乐跑持续运行…")
+        verify_started(client)
+    finally:
+        if close_diagnostic:
+            try:
+                client.adb_shell("am", "force-stop", "com.android.gpstest.osmdroid")
+            except (RuntimeError, subprocess.TimeoutExpired):
+                # Cleanup must not replace the original startup error.
+                pass
 
 
 if __name__ == "__main__":
